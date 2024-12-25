@@ -100,6 +100,7 @@ const conf = {
     key: bool(process.env.RESOURCE_KEY || true),
     dialog: bool(process.env.RESOURCE_DIALOG || true),
     landing: bool(process.env.RESOURCE_LANDING || true),
+    interest: bool(process.env.RESOURCE_INTEREST || true),
   },
 
   snake: {

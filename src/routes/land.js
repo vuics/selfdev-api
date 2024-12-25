@@ -14,8 +14,11 @@ const router = Router()
 const land = async (req, res, next) => {
   // verbose('Land req.body:', req.body)
   try {
-    const { body, title, favicon } = req.body
-    const landing = new Landing({ userId: req.user._id, body, title, favicon })
+    const { body, title, favicon, interestForm } = req.body
+    const landing = new Landing({
+      userId: req.user._id,
+      body, title, favicon, interestForm
+    })
     // verbose('landing:', landing)
     await landing.save()
     res.json({

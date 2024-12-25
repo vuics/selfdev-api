@@ -9,6 +9,7 @@ import User from './models/user.js'
 import Key from './models/key.js'
 import Dialog from './models/dialog.js'
 import Landing from './models/landing.js'
+import Interest from './models/interest.js'
 import { Verbose } from './services.js'
 import conf from './conf.js'
 
@@ -88,6 +89,28 @@ const getResources = (app) => {
   if (conf.resource.landing) {
     resources.landing = resourceJS(app, '/v1', 'landing', Landing).get({ })
   }
+
+  if (conf.resource.interest) {
+    resources.interest = resourceJS(app, '/v1', 'interest', Interest).post({
+      before: (req, res, next) => {
+        verbose('interest req.body:', req.body)
+        // req.body.userId = req.user._id
+        // req.modelQuery = Interest.where('userId', req.user._id).sort({ createdAt: 'desc'})
+        next()
+      }
+    })
+      // .index({
+      // before: (req, res, next) => {
+      //   checkLoginOrBearer(req, res, (err) => {
+      //     if (err) {
+      //       return next(err)
+      //     }
+      //     next()
+      //   })
+      // }
+    // })
+  }
+
 
   return resources
 }
