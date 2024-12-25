@@ -11,6 +11,7 @@ import ask from './ask.js'
 import run from './run.js'
 import mail from './mail.js'
 import land from './land.js'
+import interest from './interest.js'
 import available from './available.js'
 import subscriptions from './subscriptions.js'
 
@@ -28,6 +29,7 @@ router.use('/v1/ask', ask)
 router.use('/v1/run', run)
 router.use('/v1/mail', mail)
 router.use('/v1/land', land)
+router.use('/v1/interest', interest)
 router.use('/v1/available', available)
 router.use('/v1/subscriptions', subscriptions)
 

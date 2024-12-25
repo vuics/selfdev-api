@@ -94,21 +94,9 @@ const getResources = (app) => {
     resources.interest = resourceJS(app, '/v1', 'interest', Interest).post({
       before: (req, res, next) => {
         verbose('interest req.body:', req.body)
-        // req.body.userId = req.user._id
-        // req.modelQuery = Interest.where('userId', req.user._id).sort({ createdAt: 'desc'})
         next()
       }
     })
-      // .index({
-      // before: (req, res, next) => {
-      //   checkLoginOrBearer(req, res, (err) => {
-      //     if (err) {
-      //       return next(err)
-      //     }
-      //     next()
-      //   })
-      // }
-    // })
   }
 
 
