@@ -6,7 +6,7 @@ import { Verbose } from '../services.js'
 import conf from '../conf.js'
 
 const verbose = Verbose('sd:routes/ask'); verbose('')
-const app = Router()
+const router = Router()
 
 const ask = async (req, res, next) => {
   // verbose('ask req.headers:', req.headers)
@@ -26,7 +26,7 @@ const ask = async (req, res, next) => {
   }
 }
 
-app.post('/', checkAuth, ask)
-app.post('/api', checkAPIAuth, ask)
+router.post('/', checkAuth, ask)
+router.post('/api', checkAPIAuth, ask)
 
-export default app
+export default router
