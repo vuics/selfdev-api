@@ -8,7 +8,7 @@ import { checkLoginOrBearer } from './middleware/check-auth.js'
 import User from './models/user.js'
 import Key from './models/key.js'
 import Dialog from './models/dialog.js'
-import Subscription from './models/subscription.js'
+import Landing from './models/landing.js'
 import { Verbose } from './services.js'
 import conf from './conf.js'
 
@@ -83,6 +83,10 @@ const getResources = (app) => {
         })
       }
     })
+  }
+
+  if (conf.resource.landing) {
+    resources.landing = resourceJS(app, '/v1', 'landing', Landing).get({ })
   }
 
   return resources
