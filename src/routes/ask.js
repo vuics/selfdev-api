@@ -45,7 +45,7 @@ const ask = async (req, res, next) => {
     //   const dialog = new Dialog({ userId: req.user._id, prompt, reply })
     //   res.json({ result: 'ok', reply })
     //   await dialog.save()
-    }
+    // }
   } catch (err) {
     res.json({ result: 'error', message: err.toString()})
   }
