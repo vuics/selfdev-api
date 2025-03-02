@@ -19,6 +19,22 @@ const credentials = async (req, res, next) => {
     let user = null
     let password = null
 
+    // AI! Write code to get the xmpp.user and xmpp.password from User model (using Mongoose).
+    // If the are not set, then register a new user with axios request below, and in such case save in the current authenticated user document.
+    // Return json or json with error as they are now. Just replace the hardcodded values with the newly created ones user and password.
+    //
+    // const response = await axios({
+    //   method: 'get',
+    //   url: `http://${conf.xmpp.host}:8387/register`,
+    //   params: {
+    //     user: xmpp.user,
+    //     password: xmpp.password,
+    //     host: conf.xmpp.host
+    //   },
+    //   headers: { 'Content-Type': 'application/json' }
+    // })
+
+
     // if (!has(req.user, 'xmpp.user') || !has(req.user, 'xmpp.password')) {
       // FIXME: limitation on uniqueness of the name
       // second name like this will not be registered
