@@ -4,12 +4,14 @@ import resourceJS from 'resourcejs'
 import lodash from 'lodash'
 const { isArray } = lodash
 
-import { checkLoginOrBearer } from './middleware/check-auth.js'
 import User from './models/user.js'
 import Key from './models/key.js'
 import Dialog from './models/dialog.js'
 import Landing from './models/landing.js'
 import Interest from './models/interest.js'
+import Agent from './models/agent.js'
+
+import { checkLoginOrBearer } from './middleware/check-auth.js'
 import { Verbose } from './services.js'
 import conf from './conf.js'
 
@@ -99,6 +101,21 @@ const getResources = (app) => {
     })
   }
 
+  if (conf.resource.agent) {
+    resources.agent = resourceJS(app, '/v1', 'agent', Agent).rest({
+      before: (req, res, next) => {
+        checkLoginOrBearer(req, res, (err) => {
+          if (err) {
+            return next(err)
+          }
+
+          req.body.userId = req.user._id
+          req.modelQuery = Agent.where('userId', req.user._id)
+          next()
+        })
+      }
+    })
+  }
 
   return resources
 }

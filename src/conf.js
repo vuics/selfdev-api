@@ -101,6 +101,7 @@ const conf = {
     dialog: bool(process.env.RESOURCE_DIALOG || true),
     landing: bool(process.env.RESOURCE_LANDING || true),
     interest: bool(process.env.RESOURCE_INTEREST || true),
+    agent: bool(process.env.RESOURCE_AGENT || true),
   },
 
   agency: {
