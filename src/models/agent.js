@@ -15,17 +15,25 @@ export default mongoose.model(
       ref: 'User'
     },
 
-    deployed: false,
+    deployed: false, // only run the agents with deployed===true
 
     options: {
-      schemaVersion: String,
+      schemaVersion: String, // current schemaVersion==='0.1'
 
-      name: String,
+      name: String, // unique name
       description: String,
-      // model: {
-      //   provider: String,
-      //   name: String,
-      // },
+
+      systemMessage: String, // SystemMessage(SYSTEM_MESSAGE) to pass to LLM on LangChain
+
+      protoAgent: String, // 'AliceAgent' or 'BobAgent' class on Python
+      joinRooms: [ String ], // XMPP rooms to join,
+
+      model: {
+        provider: String, // Name of the LLM model provider such as 'openai' or 'anthropic'
+        name: String, // Name of the LLM such as 'gpt-4o-mini' or 'claude-3-5-sonnet-20240620'
+      },
+
+      // other options will be defined here
     },
   })
     .plugin(mongooseTimestamp)
