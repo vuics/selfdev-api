@@ -22,13 +22,39 @@ export default mongoose.model(
       name: String, // unique name
       description: String,
       systemMessage: String, // SystemMessage(SYSTEM_MESSAGE) to pass to LLM on LangChain
-
       joinRooms: [ String ], // XMPP rooms to join,
 
       model: {
         provider: String, // Name of the LLM model provider such as 'openai' or 'anthropic'
         name: String, // Name of the LLM such as 'gpt-4o-mini' or 'claude-3-5-sonnet-20240620'
       },
+      embeddings: {
+        provider: String,
+        name: String,
+      },
+
+      vectorStore: String,
+
+      loaders: [ {
+        enable: Boolean,
+        kind: String,
+
+        // text loader
+        files: [ String ],
+
+        // directory loader
+        path: String,
+        glob: String,
+
+        // web loader
+        urls: [ String ],
+
+        // google-drive loader
+        folderId: String,
+        recursive: Boolean,
+        filesIds: [ String ],
+        documentIds: [ String ],
+      }, ],
 
       // other options will be defined here
     },
