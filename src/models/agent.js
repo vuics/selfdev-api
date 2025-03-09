@@ -15,17 +15,14 @@ export default mongoose.model(
       ref: 'User'
     },
 
-    deployed: false, // only run the agents with deployed===true
+    archetype: String, // chat, rag, notebook
+    deployed: Boolean, // only run the agents with deployed===true
 
     options: {
-      schemaVersion: String, // current schemaVersion==='0.1'
-
       name: String, // unique name
       description: String,
-
       systemMessage: String, // SystemMessage(SYSTEM_MESSAGE) to pass to LLM on LangChain
 
-      protoAgent: String, // 'AliceAgent' or 'BobAgent' class on Python
       joinRooms: [ String ], // XMPP rooms to join,
 
       model: {
