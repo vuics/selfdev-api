@@ -20,7 +20,7 @@ const rememberMe = (req, res, next) => {
 }
 
 router.post('/', rememberMe, (req, res, next) => {
-  passport.authenticate('local', (err, user, info) => {
+  passport.authenticate('local', (err, user, _info) => {
     if (err) {
       return next(err)
     }

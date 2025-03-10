@@ -1,19 +1,14 @@
 import { Router } from 'express'
-import lodash from 'lodash'
-const { isEmpty } = lodash
-import { randomBytes } from 'crypto'
 
 import { log, warn, error, Verbose } from '../services.js'
 import User from '../models/user.js'
-import { validateEmail } from '../utils/validation.js'
 import conf from '../conf.js'
-import { transporter } from '../mailer.js'
 
 const verbose = Verbose('sd:routes/reset'); verbose('')
 const router = Router()
 
 const app = router
-app.post('/', async (req, res, next) => {
+app.post('/', async (req, res) => {
   // verbose('reset req.body:', req.body)
   const { token, password } = req.body
 

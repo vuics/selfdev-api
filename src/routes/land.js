@@ -1,17 +1,12 @@
 import { Router } from 'express'
-import lodash from 'lodash'
-const { isEmpty } = lodash
-import { log, warn, Verbose } from '../services.js'
-import { validateEmail, validatePhone, validatePassword } from '../utils/validation.js'
-import { transporter } from '../mailer.js'
-import conf from '../conf.js'
+import { Verbose } from '../services.js'
 import Landing from '../models/landing.js'
-import { checkAuth, checkAPIAuth } from '../middleware/check-auth.js'
+import { checkAPIAuth } from '../middleware/check-auth.js'
 
 const verbose = Verbose('sd:routes/land'); verbose('')
 const router = Router()
 
-const land = async (req, res, next) => {
+const land = async (req, res) => {
   // verbose('Land req.body:', req.body)
   try {
     const { body, title, favicon, interestForm } = req.body

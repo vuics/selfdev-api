@@ -1,5 +1,5 @@
 import { createTransport } from 'nodemailer'
-import { log, Verbose } from './services.js'
+import { Verbose } from './services.js'
 import conf from './conf.js'
 
 const verbose = Verbose('sd:mailer'); verbose('')

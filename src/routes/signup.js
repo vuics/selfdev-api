@@ -11,7 +11,7 @@ const verbose = Verbose('sd:routes/signup'); verbose('')
 const router = Router()
 
 const app = router
-app.post('/', async (req, res, next) => {
+app.post('/', async (req, res) => {
   // verbose('signup req.body:', req.body)
   const { email, password, firstName, lastName, phone } = req.body
 

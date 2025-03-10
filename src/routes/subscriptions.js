@@ -1,7 +1,7 @@
 import { Router, raw } from 'express'
 import Stripe from 'stripe'
 import conf from '../conf.js'
-import { checkAuth, checkAPIAuth } from '../middleware/check-auth.js'
+import { checkAuth } from '../middleware/check-auth.js'
 import { Verbose } from '../services.js'
 import Subscription from '../models/subscription.js'
 
@@ -150,7 +150,7 @@ app.post('/webhook', raw({ type: 'application/json' }), (request, response) => {
           conf.stripe.endpointSecret
         )
       } catch (err) {
-        console.log(`⚠️  Webhook signature verification failed.`, err.message)
+        console.log("⚠️  Webhook signature verification failed.", err.message)
         return response.sendStatus(400)
       }
     }

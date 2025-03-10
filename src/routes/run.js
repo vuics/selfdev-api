@@ -8,7 +8,7 @@ import conf from '../conf.js'
 const verbose = Verbose('sd:routes/run'); verbose('')
 const app = Router()
 
-const run = async (req, res, next) => {
+const run = async (req, res) => {
   // verbose('run req.headers:', req.headers)
   // verbose('run req.user:', req.user)
   try {

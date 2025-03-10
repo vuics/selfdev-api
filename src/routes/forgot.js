@@ -1,11 +1,8 @@
 import { Router } from 'express'
-import lodash from 'lodash'
-const { isEmpty } = lodash
 import { randomBytes } from 'crypto'
 
 import { log, Verbose } from '../services.js'
 import User from '../models/user.js'
-import { validateEmail } from '../utils/validation.js'
 import conf from '../conf.js'
 import { transporter } from '../mailer.js'
 
@@ -13,7 +10,7 @@ const verbose = Verbose('sd:routes/forgot'); verbose('')
 const router = Router()
 
 const app = router
-app.post('/', async (req, res, next) => {
+app.post('/', async (req, res) => {
   // verbose('forgot req.body:', req.body)
   const { email } = req.body
   let token = null
@@ -48,7 +45,7 @@ Hi,
 We just received a requested to reset your password on Self-developing AI.
 
 Please, click the link below to reset password:
-${conf.webApp.origin + '/reset?token=' + token}
+${conf.webApp.origin}/reset?token=${token}
 
 This link will expire within ${conf.reset.expiresMinutes} minutes.
 
