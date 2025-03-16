@@ -64,6 +64,11 @@ export default mongoose.model(
         promptKey: String,
       },
 
+      command: {
+        execute: String,
+        shell: Boolean,
+      },
+
       // other options will be defined here
     },
   })
