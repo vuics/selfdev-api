@@ -52,6 +52,7 @@ export default mongoose.model(
         // google-drive loader
         folderId: String,
         recursive: Boolean,
+        unstructured: Boolean,
         filesIds: [ String ],
         documentIds: [ String ],
       }, ],
