@@ -70,6 +70,11 @@ export default mongoose.model(
         shell: Boolean,
       },
 
+      flow: {
+        flowId: { type: 'string' },
+        sessionId: { type: 'string' },
+      },
+
       // other options will be defined here
     },
   })
