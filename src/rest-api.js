@@ -10,6 +10,7 @@ import Dialog from './models/dialog.js'
 import Landing from './models/landing.js'
 import Interest from './models/interest.js'
 import Agent from './models/agent.js'
+import Map from './models/map.js'
 
 import { checkLoginOrBearer } from './middleware/check-auth.js'
 import { Verbose } from './services.js'
@@ -111,6 +112,22 @@ const getResources = (app) => {
 
           req.body.userId = req.user._id
           req.modelQuery = Agent.where('userId', req.user._id)
+          next()
+        })
+      }
+    })
+  }
+
+  if (conf.resource.map) {
+    resources.map = resourceJS(app, '/v1', 'map', Map).rest({
+      before: (req, res, next) => {
+        checkLoginOrBearer(req, res, (err) => {
+          if (err) {
+            return next(err)
+          }
+
+          req.body.userId = req.user._id
+          req.modelQuery = Map.where('userId', req.user._id)
           next()
         })
       }

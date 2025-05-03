@@ -102,6 +102,7 @@ const conf = {
     landing: bool(process.env.RESOURCE_LANDING || true),
     interest: bool(process.env.RESOURCE_INTEREST || true),
     agent: bool(process.env.RESOURCE_AGENT || true),
+    map: bool(process.env.RESOURCE_MAP || true),
   },
 
   agency: {
