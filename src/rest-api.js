@@ -1,5 +1,4 @@
 import crypto from 'crypto'
-import { join } from 'path'
 import resourceJS from 'resourcejs'
 import lodash from 'lodash'
 const { isArray } = lodash

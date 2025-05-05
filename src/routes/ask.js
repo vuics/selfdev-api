@@ -4,19 +4,14 @@ import { checkAuth, checkAPIAuth } from '../middleware/check-auth.js'
 import Dialog from '../models/dialog.js'
 import { Verbose } from '../services.js'
 import conf from '../conf.js'
-// import util from 'util'
-// import { exec } from 'child_process'
 
 const verbose = Verbose('sd:routes/ask'); verbose('')
 const router = Router()
 
-const ask = async (req, res, next) => {
-  // verbose('ask req.headers:', req.headers)
-  // verbose('ask req.user:', req.user)
+const ask = async (req, res) => {
   try {
     const { prompt } = req.body
     let reply = ''
-    // verbose('prompt:', prompt)
     if (conf.agency.enable) {
       const response = await axios.post(`${conf.agency.url}/chat`, {
         prompt

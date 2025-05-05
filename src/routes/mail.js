@@ -1,8 +1,6 @@
 import { Router } from 'express'
-import lodash from 'lodash'
-const { isEmpty } = lodash
 import { log, warn, Verbose } from '../services.js'
-import { validateEmail, validatePhone, validatePassword } from '../utils/validation.js'
+import { validateEmail } from '../utils/validation.js'
 import { transporter } from '../mailer.js'
 import conf from '../conf.js'
 import Mailed from '../models/mailed.js'
@@ -11,25 +9,29 @@ import { checkAuth, checkAPIAuth } from '../middleware/check-auth.js'
 const verbose = Verbose('sd:routes/mail'); verbose('')
 const router = Router()
 
-const mail = async (req, res, next) => {
+const mail = async (req, res) => {
   verbose('Mail req.body:', req.body)
   try {
     const { to, from, subject, text } = req.body
 
-    if (!to) {
-      to = user.email
-      warn('The field "to" is omitted, substitute with default:', to)
+    let newTo = to
+    let newFrom = from
+
+    if (!newTo) {
+      newTo = user.email
+      warn('The field "to" is omitted, substitute with default:', newTo)
     }
-    if (!from) {
-      from = conf.smtp.from
-      warn('The field "from" is omitted, substitute with default:', from)
+
+    if (!newFrom) {
+      newFrom = conf.smtp.from
+      warn('The field "from" is omitted, substitute with default:', newFrom)
     }
 
     let validationError = ''
-    if (to && !validateEmail(to)) {
+    if (newTo && !validateEmail(newTo)) {
       validationError += 'Invalid email to address. '
     }
-    if (from && !validateEmail(from)) {
+    if (newFrom && !validateEmail(newFrom)) {
       validationError += 'Invalid email from address. '
     }
 
@@ -40,16 +42,16 @@ const mail = async (req, res, next) => {
       })
     }
 
-    log('Sending a mail to:', to, ', from:', from)
+    log('Sending a mail to:', newTo, ', from:', newFrom)
     const mail = await transporter.sendMail({
-      from,
-      to,
+      from: newFrom,
+      to: newTo,
       subject,
       text,
     })
     log('Mail sent:', mail)
 
-    const mailed = new Mailed({ userId: req.user._id, from, to, subject, text })
+    const mailed = new Mailed({ userId: req.user._id, from: newFrom, to: newTo, subject, text })
     await mailed.save()
     res.json({
       result: 'ok',

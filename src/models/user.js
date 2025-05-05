@@ -6,7 +6,7 @@ import { error, Verbose } from '../services.js'
 
 const verbose = Verbose('sd:models/user'); verbose('')
 
-const { Mixed } = mongoose.Schema.Types
+// const { Mixed } = mongoose.Schema.Types
 
 const schema = mongoose.Schema({
   email: { type: String, unique: true, required: true },
@@ -38,8 +38,7 @@ schema.methods.isAdmin = () =>
 
 schema.static.getByEmail = async ({ email }) => {
   try {
-    const user = await db.collection('users').findOne({ email })
-    return user
+    return await db.collection('users').findOne({ email })
   } catch (err) {
     error('User.getByEmail error:', err)
     throw new Error(err)

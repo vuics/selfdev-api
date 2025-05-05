@@ -1,9 +1,8 @@
 import session from 'express-session'
 import MongoStore from 'connect-mongo'
-import mongoose from 'mongoose'
 
 import conf from '../conf.js'
-import db, { mongoOptions } from '../mongo.js'
+import { mongoOptions } from '../mongo.js'
 
 export const sessionStore = MongoStore.create({
   mongoUrl: conf.db.url,

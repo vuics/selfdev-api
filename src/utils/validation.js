@@ -1,4 +1,4 @@
-export const validateEmail = (email) => {
+export function validateEmail(email) {
   return String(email)
     .toLowerCase()
     .match(
@@ -6,11 +6,11 @@ export const validateEmail = (email) => {
     )
 }
 
-export const validatePhone = (phone) => {
+export function validatePhone(phone) {
   return String(phone).match(/^\+(?:[0-9] ?){6,14}[0-9]$/)
 }
 
-export const validatePassword = (password) => {
+export function validatePassword(password) {
 
   // https://stackoverflow.com/questions/19605150/regex-for-password-must-contain-at-least-eight-characters-at-least-one-number-a
   const pw = String(password)
