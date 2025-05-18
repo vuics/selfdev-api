@@ -86,7 +86,9 @@ export default mongoose.model(
       qiskit: {
         // provider: String,
         backend: String,
+        minNumQubits: Number,
         language: String,
+        optimizationLevel: Number,
         draw: {
           enable: Boolean,
           output: String,
