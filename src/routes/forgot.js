@@ -57,7 +57,7 @@ If you don't want to reset your password, just ignore this message and nothing w
 Feel free to contact us if you have any difficulties resetting your password.
 
 All the best,
-The AZ1 Team
+The SelfDev Team
 `
     })
     log('Mail sent:', mail)

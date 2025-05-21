@@ -81,7 +81,7 @@ app.post('/', async (req, res, next) => {
   const mail = await transporter.sendMail({
     from: conf.smtp.from,
     to: user.email,
-    subject: 'Welcome to AZ1!',
+    subject: 'Welcome to SelfDev!',
     text: `
 Hi ${user.firstName},
 
@@ -101,7 +101,7 @@ ${conf.webApp.origin}
 Feel free to contact us if you have any questions. Please, tell us how to develop our app to satisfy your needs. We hope you enjoy the Self-developing AI.
 
 All the best,
-The AZ1 Team
+The SelfDev Team
 `
   })
   log('Mail sent:', mail)
