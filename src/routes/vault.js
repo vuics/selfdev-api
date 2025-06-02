@@ -78,10 +78,10 @@ const listSecrets = async (req, res, next) => {
     try {
       result = await vault.read(`secret/data/user_${userId}`);
       data = result.data.data; // KV v2 nests data under data.data
-      console.log('Secret exists:', result.data);
+      // console.log('Secret exists:', result.data);
     } catch (err) {
       if (err.response && err.response.statusCode === 404) {
-        console.log('Secret does not exist.');
+        log(`Secret does not exists for user_${userId}.`);
       } else {
         // Unexpected error, rethrow or handle differently
         console.error('Error reading secret:', err);
@@ -89,9 +89,9 @@ const listSecrets = async (req, res, next) => {
       }
     }
 
-    verbose('data:', data)
+    // verbose('data:', data)
     const onlyKeys = nullifyValues(data)
-    verbose('onlyKeys:', onlyKeys)
+    // verbose('onlyKeys:', onlyKeys)
     res.json(onlyKeys)
   } catch (err) {
     res.status(500).json({ result: 'error', message: err.toString()})
@@ -106,12 +106,11 @@ const exposeSecret = async (req, res, next) => {
     const userId = req.user._id.toString()
     const result = await vault.read(`secret/data/user_${userId}`);
     const data = result.data.data; // KV v2 nests data under data.data
-    console.log('expose req.body:', req.body)
     const { key } = req.body
     const expose = {
       [key]: data[key],
     }
-    verbose('expose:', expose)
+    // verbose('expose:', expose)
     res.json(expose)
   } catch (err) {
     res.status(500).json({ result: 'error', message: err.toString()})
@@ -129,11 +128,11 @@ const addSecret = async (req, res, next) => {
     let data = {};
     try {
       const readResult = await vault.read(`secret/data/user_${userId}`);
-      verbose('vault readResult:', readResult);
+      // verbose('vault readResult:', readResult);
       data = readResult.data.data; // KV v2: nested under data.data
     } catch (err) {
       if (err.response && err.response.statusCode === 404) {
-        verbose(`Secret not found for user_${userId}, will create new one.`);
+        log(`Secret not found for user_${userId}, will create new one.`);
       } else {
         throw err; // Unexpected error
       }
@@ -146,9 +145,9 @@ const addSecret = async (req, res, next) => {
     const writeResult = await vault.write(`secret/data/user_${userId}`, {
       data: newData,
     });
-    verbose('vault writeResult:', writeResult)
+    // verbose('vault writeResult:', writeResult)
     const onlyKeys = nullifyValues(newData)
-    verbose('onlyKeys:', onlyKeys)
+    // verbose('onlyKeys:', onlyKeys)
     res.json(onlyKeys)
   } catch (err) {
     res.status(500).json({ result: 'error', message: err.toString()})
@@ -162,7 +161,7 @@ const deleteSecret = async (req, res, next) => {
     }
     const userId = req.user._id.toString()
     const readResult = await vault.read(`secret/data/user_${userId}`);
-    verbose('vault readResult:', readResult)
+    // verbose('vault readResult:', readResult)
     const data = readResult.data.data; // KV v2 nests data under data.data
     const { key } = req.body
     delete data[key]
@@ -172,7 +171,7 @@ const deleteSecret = async (req, res, next) => {
     const writeResult = await vault.write(`secret/data/user_${userId}`, {
       data: newData,
     });
-    verbose('vault writeResult:', writeResult)
+    // verbose('vault writeResult:', writeResult)
     const onlyKeys = nullifyValues(newData)
     res.json(onlyKeys)
   } catch (err) {
