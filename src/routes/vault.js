@@ -59,7 +59,7 @@ if (conf.vault.enable) {
   }
 }
 
-const index = async (req, res, next) => {
+const getSecrets = async (req, res, next) => {
   try {
     if (!vault) {
       throw new Error('Vault is disabled on backend')
@@ -74,7 +74,57 @@ const index = async (req, res, next) => {
   }
 }
 
-router.get('/', checkAuth, index)
+const addSecret = async (req, res, next) => {
+  try {
+    if (!vault) {
+      throw new Error('Vault is disabled on backend')
+    }
+    const userId = req.user._id.toString()
+    const readResult = await vault.read(`secret/data/user_${userId}`);
+    verbose('vault readResult:', readResult)
+    const data = readResult.data.data; // KV v2 nests data under data.data
+    const { key, value } = req.body
+    const newData = {
+      ...data,
+      [key]: value,
+    }
+    const writeResult = await vault.write(`secret/data/user_${userId}`, {
+      data: newData,
+    });
+    verbose('vault writeResult:', writeResult)
+    res.json(newData)
+  } catch (err) {
+    res.status(500).json({ result: 'error', message: err.toString()})
+  }
+}
+
+const deleteSecret = async (req, res, next) => {
+  try {
+    if (!vault) {
+      throw new Error('Vault is disabled on backend')
+    }
+    const userId = req.user._id.toString()
+    const readResult = await vault.read(`secret/data/user_${userId}`);
+    verbose('vault readResult:', readResult)
+    const data = readResult.data.data; // KV v2 nests data under data.data
+    const { key } = req.body
+    delete data[key]
+    const newData = {
+      ...data,
+    }
+    const writeResult = await vault.write(`secret/data/user_${userId}`, {
+      data: newData,
+    });
+    verbose('vault writeResult:', writeResult)
+    res.json(newData)
+  } catch (err) {
+    res.status(500).json({ result: 'error', message: err.toString()})
+  }
+}
+
+router.get('/', checkAuth, getSecrets)
+router.post('/', checkAuth, addSecret)
+router.delete('/', checkAuth, deleteSecret)
 // router.get('/api', checkAPIAuth, index)
 
 export default router
