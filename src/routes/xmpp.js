@@ -3,9 +3,14 @@ import { Router } from 'express'
 import axios from 'axios'
 import { v4 as uuidv4 } from 'uuid'
 import generator from 'generate-password'
+import { customAlphabet } from 'nanoid'
+
 import { checkAuth, checkAPIAuth } from '../middleware/check-auth.js'
 import { Verbose } from '../services.js'
 import conf from '../conf.js'
+import User from '../models/user.js'
+
+const customNanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 10)
 
 const verbose = Verbose('sd:routes/xmpp'); verbose('')
 const router = Router()
@@ -21,12 +26,19 @@ const credentials = async (req, res, next) => {
       // verbose('Using existing XMPP credentials> user:', user, ', password:', password);
       verbose('Using existing XMPP credentials for user:', user);
     } else {
-      // FIXME: The problem of uniqueness. What if this user is not unique?
-      //        It registers the same user with a new password that is not accessible
-      //        by an old user.
-      //        Possible solutions: check if that user already exists in Prosody or in Mongo (User.find())
-      //        Or allow users to select a unique nickname.
-      user = req.user.firstName + req.user.lastName
+      // NOTE: The code below solves the problem of user name uniqueness.
+      const baseUser = (req.user.firstName + req.user.lastName).toLowerCase();
+      user = baseUser;
+      for (let i = 0; i < 32; i++) {
+        const existingUser = await User.findOne({ 'xmpp.user': user });
+        if (!existingUser) {
+          verbose('xmpp.user is unique, safe to use:', user);
+          break;
+        } else {
+          verbose('xmpp.user already exists:', user);
+          user = (`${baseUser}-${customNanoid(i + 1)}`).toLowerCase();
+        }
+      }
 
       password = generator.generate({
         length: 16,
@@ -41,7 +53,7 @@ const credentials = async (req, res, next) => {
       try {
         const response = await axios({
           method: 'get',
-          url: `${conf.xmpp.commanderUrl}/register`,
+          url: `${conf.xmpp.commanderUrl}/register-user`,
           params: {
             user: user,
             password: password,

@@ -6,7 +6,7 @@ const verbose = Verbose('sd:routes/logout'); verbose('')
 
 const router = Router()
 
-router.get('/', checkAuth, (req, res) => {
+router.get('/', checkAuth, (req, res, next) => {
   req.logout((err) => {
     if (err) {
       res.json({
