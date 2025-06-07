@@ -157,7 +157,19 @@ export default mongoose.model(
         },
       },
 
-      // other options will be defined here
+      imagegen: {
+        model: {
+          provider: String,
+          name: String,
+          apiKey: {
+            valueFromVault: String,
+          },
+        },
+        size: String,
+        quality: String,
+        style: String,
+        n: Number,
+      },
     },
   })
     .plugin(mongooseTimestamp)
