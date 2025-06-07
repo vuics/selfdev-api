@@ -102,12 +102,12 @@ export default mongoose.model(
         shell: Boolean,
       },
 
-      flow: {
+      langflow: {
         flowId: String,
         sessionId: String,
       },
 
-      webhook: {
+      nodered: {
         method: String,
         route: String,
         payload: Mixed,
@@ -115,7 +115,7 @@ export default mongoose.model(
         promptKey: String,
       },
 
-      qiskit: {
+      quantum: {
         // provider: String,
         backend: String,
         minNumQubits: Number,
