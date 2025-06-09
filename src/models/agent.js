@@ -109,6 +109,8 @@ export default mongoose.model(
             valueFromVault: String,
           },
         },
+        format: String,
+        speed: Number,
       },
 
       imagegen: {
