@@ -170,6 +170,27 @@ export default mongoose.model(
         parseJson: Boolean,
         promptKey: String,
       },
+
+      stt: {
+        model: {
+          provider: String,
+          name: String,
+          apiKey: {
+            valueFromVault: String,
+          },
+        },
+        language: String,
+      },
+
+      tts: {
+        model: {
+          provider: String,
+          name: String,
+          apiKey: {
+            valueFromVault: String,
+          },
+        },
+      },
     },
   })
     .plugin(mongooseTimestamp)
