@@ -186,6 +186,7 @@ export default mongoose.model(
         model: {
           provider: String,
           name: String,
+          voice: String,
           apiKey: {
             valueFromVault: String,
           },
