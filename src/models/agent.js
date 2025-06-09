@@ -89,6 +89,28 @@ export default mongoose.model(
         },
       },
 
+      stt: {
+        model: {
+          provider: String,
+          name: String,
+          apiKey: {
+            valueFromVault: String,
+          },
+        },
+        language: String,
+      },
+
+      tts: {
+        model: {
+          provider: String,
+          name: String,
+          voice: String,
+          apiKey: {
+            valueFromVault: String,
+          },
+        },
+      },
+
       imagegen: {
         model: {
           provider: String,
@@ -169,28 +191,6 @@ export default mongoose.model(
         parameters: Mixed,
         parseJson: Boolean,
         promptKey: String,
-      },
-
-      stt: {
-        model: {
-          provider: String,
-          name: String,
-          apiKey: {
-            valueFromVault: String,
-          },
-        },
-        language: String,
-      },
-
-      tts: {
-        model: {
-          provider: String,
-          name: String,
-          voice: String,
-          apiKey: {
-            valueFromVault: String,
-          },
-        },
       },
     },
   })
