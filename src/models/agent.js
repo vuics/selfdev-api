@@ -194,6 +194,16 @@ export default mongoose.model(
         parseJson: Boolean,
         promptKey: String,
       },
+
+      avatar: {
+        model: {
+          provider: String,
+          // name: String,
+          // apiKey: {
+          //   valueFromVault: String,
+          // },
+        },
+      }
     },
   })
     .plugin(mongooseTimestamp)
