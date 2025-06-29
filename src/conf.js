@@ -110,6 +110,7 @@ const conf = {
     url: process.env.AGENCY_URL || 'http://127.0.0.1:6600/v1',
   },
 
+  // TODO: deprecate
   snake: {
     enbale: bool(process.env.SNAKE_ENABLE || false),
     url: process.env.SNAKE_URL || 'http://127.0.0.1:6699/v1',
@@ -142,8 +143,11 @@ const conf = {
   },
 
   stripe: {
-    key: process.env.STRIPE_KEY || '<STRIPE_KEY_PLACEHOLDER>',
-    endpointSecret: process.env.STRIPE_ENDPOINT_SECRET || '<STRIPE_ENDPOINT_SECRET_PLACEHOLDER>',
+    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '(TBS)',
+    secretKey: process.env.STRIPE_SECRET_KEY || '(TBS)',
+    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '(TBS)',
+    // key: process.env.STRIPE_KEY || '<STRIPE_KEY_PLACEHOLDER>',
+    // endpointSecret: process.env.STRIPE_ENDPOINT_SECRET || '<STRIPE_ENDPOINT_SECRET_PLACEHOLDER>',
   },
 
   xmpp: {
