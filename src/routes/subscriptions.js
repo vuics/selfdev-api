@@ -74,12 +74,12 @@ app.post('/cancel-subscription', checkAuth, async (req, res) => {
     verbose('cancel-subscription req.body:', req.body)
     const { subscriptionId } = req.body
     verbose('cancel-subscription subscriptionId:', subscriptionId)
-    const deletedSubscription = await stripe.subscriptions.cancel(
+    const canceledSubscription = await stripe.subscriptions.cancel(
       subscriptionId
     );
-    verbose('deletedSubscription:', deletedSubscription)
+    verbose('canceledSubscription:', canceledSubscription)
 
-    res.send({ subscription: deletedSubscription });
+    res.send({ canceledSubscription });
   } catch (error) {
     return res.status(400).send({ error: { message: error.message } });
   }
