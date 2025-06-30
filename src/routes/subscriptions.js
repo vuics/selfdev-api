@@ -23,13 +23,17 @@ const stripe = Stripe(conf.stripe.secretKey, {
 })
 
 app.get('/config', async (req, res) => {
+  res.send({
+    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
+  });
+});
+
+app.get('/prices', async (req, res) => {
   const prices = await stripe.prices.list({
     lookup_keys: ['sample_basic', 'sample_premium'],
     expand: ['data.product']
   });
-
   res.send({
-    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
     prices: prices.data,
   });
 });
