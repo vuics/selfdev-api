@@ -65,7 +65,8 @@ app.post('/create', checkAuth, async (req, res) => {
     verbose('subscription:', subscription)
 
     res.send({
-      subscriptionId: subscription.id,
+      // subscriptionId: subscription.id,
+      subscription,
       clientSecret: subscription.latest_invoice.payment_intent.client_secret,
     });
   } catch (error) {
