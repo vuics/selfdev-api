@@ -34,33 +34,32 @@ app.get('/config', async (req, res) => {
   });
 });
 
-app.post('/create-customer', async (req, res) => {
-  // Create a new customer object
+// app.post('/create-customer', async (req, res) => {
+//   // Create a new customer object
+//   const customer = await stripe.customers.create({
+//     email: req.body.email,
+//   });
+//   // TODO:
+//   // Save the customer.id in your database alongside your user.
+//   // We're simulating authentication with a cookie.
+//   // res.cookie('customer', customer.id, { maxAge: 900000, httpOnly: true });
+//   res.send({ customer: customer });
+// });
+
+app.post('/create-subscription', checkAuth, async (req, res) => {
+  verbose('create subscription body:', req.body)
+
+  verbose('req.user:', req.user)
+  verbose('req.user.email:', req.user.email)
   const customer = await stripe.customers.create({
-    email: req.body.email,
+    email: req.user.email,
   });
-
-  // TODO:
-  // Save the customer.id in your database alongside your user.
-  // We're simulating authentication with a cookie.
-  res.cookie('customer', customer.id, { maxAge: 900000, httpOnly: true });
-
-  res.send({ customer: customer });
-});
-
-app.post('/create-subscription', async (req, res) => {
-  verbose('create subscription> cookies:', JSON.stringify(req.cookies), ', body:', req.body)
-
-  // // Simulate authenticated user. In practice this will be the
-  // // Stripe Customer ID related to the authenticated user.
-  // const customerId = req.cookies['customer'];
-
-  // TODO: get from database
-  const customerId = req.body.customerId
+  verbose('customer:', customer)
+  const customerId = customer.id
+  verbose('customerId:', customerId)
 
   // Create the subscription
   const priceId = req.body.priceId;
-
 
   try {
     const subscription = await stripe.subscriptions.create({
@@ -82,7 +81,7 @@ app.post('/create-subscription', async (req, res) => {
   }
 });
 
-app.get('/invoice-preview', async (req, res) => {
+app.get('/invoice-preview', checkAuth, async (req, res) => {
   const customerId = req.cookies['customer'];
   const priceId = process.env[req.query.newPriceLookupKey.toUpperCase()];
 
@@ -102,12 +101,16 @@ app.get('/invoice-preview', async (req, res) => {
   res.send({ invoice });
 });
 
-app.post('/cancel-subscription', async (req, res) => {
-  // Cancel the subscription
+app.post('/cancel-subscription', checkAuth, async (req, res) => {
   try {
-    const deletedSubscription = await stripe.subscriptions.del(
-      req.body.subscriptionId
+    verbose('cancel-subscription req.body:', req.body)
+    const { subscriptionId } = req.body
+    verbose('cancel-subscription subscriptionId:', subscriptionId)
+    // const deletedSubscription = await stripe.subscriptions.del(
+    const deletedSubscription = await stripe.subscriptions.cancel(
+      subscriptionId
     );
+    verbose('deletedSubscription:', deletedSubscription)
 
     res.send({ subscription: deletedSubscription });
   } catch (error) {
@@ -115,7 +118,7 @@ app.post('/cancel-subscription', async (req, res) => {
   }
 });
 
-app.post('/update-subscription', async (req, res) => {
+app.post('/update-subscription', checkAuth, async (req, res) => {
   try {
     const subscription = await stripe.subscriptions.retrieve(
       req.body.subscriptionId
@@ -135,7 +138,7 @@ app.post('/update-subscription', async (req, res) => {
   }
 });
 
-app.get('/subscriptions', async (req, res) => {
+app.get('/subscriptions', checkAuth, async (req, res) => {
   // Simulate authenticated user. In practice this will be the
   // Stripe Customer ID related to the authenticated user.
   const customerId = req.cookies['customer'];
