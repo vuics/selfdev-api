@@ -34,18 +34,6 @@ app.get('/config', async (req, res) => {
   });
 });
 
-// app.post('/create-customer', async (req, res) => {
-//   // Create a new customer object
-//   const customer = await stripe.customers.create({
-//     email: req.body.email,
-//   });
-//   // TODO:
-//   // Save the customer.id in your database alongside your user.
-//   // We're simulating authentication with a cookie.
-//   // res.cookie('customer', customer.id, { maxAge: 900000, httpOnly: true });
-//   res.send({ customer: customer });
-// });
-
 app.post('/create-subscription', checkAuth, async (req, res) => {
   verbose('create subscription body:', req.body)
 
@@ -56,10 +44,10 @@ app.post('/create-subscription', checkAuth, async (req, res) => {
   });
   verbose('customer:', customer)
   const customerId = customer.id
+  // TODO: add customerId to user doc
   verbose('customerId:', customerId)
-
-  // Create the subscription
   const priceId = req.body.priceId;
+  verbose('priceId:', priceId)
 
   try {
     const subscription = await stripe.subscriptions.create({
@@ -81,32 +69,11 @@ app.post('/create-subscription', checkAuth, async (req, res) => {
   }
 });
 
-app.get('/invoice-preview', checkAuth, async (req, res) => {
-  const customerId = req.cookies['customer'];
-  const priceId = process.env[req.query.newPriceLookupKey.toUpperCase()];
-
-  const subscription = await stripe.subscriptions.retrieve(
-    req.query.subscriptionId
-  );
-
-  const invoice = await stripe.invoices.retrieveUpcoming({
-    customer: customerId,
-    subscription: req.query.subscriptionId,
-    subscription_items: [ {
-      id: subscription.items.data[0].id,
-      price: priceId,
-    }],
-  });
-
-  res.send({ invoice });
-});
-
 app.post('/cancel-subscription', checkAuth, async (req, res) => {
   try {
     verbose('cancel-subscription req.body:', req.body)
     const { subscriptionId } = req.body
     verbose('cancel-subscription subscriptionId:', subscriptionId)
-    // const deletedSubscription = await stripe.subscriptions.del(
     const deletedSubscription = await stripe.subscriptions.cancel(
       subscriptionId
     );
@@ -118,46 +85,20 @@ app.post('/cancel-subscription', checkAuth, async (req, res) => {
   }
 });
 
-app.post('/update-subscription', checkAuth, async (req, res) => {
-  try {
-    const subscription = await stripe.subscriptions.retrieve(
-      req.body.subscriptionId
-    );
-    const updatedSubscription = await stripe.subscriptions.update(
-      req.body.subscriptionId, {
-        items: [{
-          id: subscription.items.data[0].id,
-          price: process.env[req.body.newPriceLookupKey.toUpperCase()],
-        }],
-      }
-    );
-
-    res.send({ subscription: updatedSubscription });
-  } catch (error) {
-    return res.status(400).send({ error: { message: error.message } });
-  }
-});
-
 app.get('/subscriptions', checkAuth, async (req, res) => {
   // Simulate authenticated user. In practice this will be the
   // Stripe Customer ID related to the authenticated user.
+  // FIXME: retrieve customerId from user doc
   const customerId = req.cookies['customer'];
-
   const subscriptions = await stripe.subscriptions.list({
     customer: customerId,
     status: 'all',
     expand: ['data.default_payment_method'],
   });
-
   res.json({subscriptions});
 });
 
-app.post(
-  '/webhook',
-  // FIXME:
-  // bodyParser.raw({ type: 'application/json' }),
-  raw({ type: 'application/json' }),
-  async (req, res) => {
+app.post('/webhook', raw({ type: 'application/json' }), async (req, res) => {
     // Retrieve the event by verifying the signature using the raw body and secret.
     let event;
 
@@ -241,6 +182,44 @@ app.post(
   }
 );
 
+///////////////////////////////////////////////////////////////////////////////
+
+// app.get('/invoice-preview', checkAuth, async (req, res) => {
+//   // FIXME
+//   const customerId = req.cookies['customer'];
+//   const priceId = process.env[req.query.newPriceLookupKey.toUpperCase()];
+//   const subscription = await stripe.subscriptions.retrieve(
+//     req.query.subscriptionId
+//   );
+//   const invoice = await stripe.invoices.retrieveUpcoming({
+//     customer: customerId,
+//     subscription: req.query.subscriptionId,
+//     subscription_items: [ {
+//       id: subscription.items.data[0].id,
+//       price: priceId,
+//     }],
+//   });
+//   res.send({ invoice });
+// });
+
+// app.post('/update-subscription', checkAuth, async (req, res) => {
+//   try {
+//     const subscription = await stripe.subscriptions.retrieve(
+//       req.body.subscriptionId
+//     );
+//     const updatedSubscription = await stripe.subscriptions.update(
+//       req.body.subscriptionId, {
+//         items: [{
+//           id: subscription.items.data[0].id,
+//           price: process.env[req.body.newPriceLookupKey.toUpperCase()],
+//         }],
+//       }
+//     );
+//     res.send({ subscription: updatedSubscription });
+//   } catch (error) {
+//     return res.status(400).send({ error: { message: error.message } });
+//   }
+// });
 
 ///////////////////////////////////////////////////////////////////////////////
 
