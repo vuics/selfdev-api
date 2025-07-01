@@ -206,6 +206,8 @@ app.post('/cancel', checkAuth, async (req, res) => {
   }
 });
 
+// NOTE: unused
+//
 app.post('/invoice/preview', checkAuth, async (req, res) => {
   verbose('req.body:', req.body)
   verbose('req.user:', req.user)
