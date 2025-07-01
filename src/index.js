@@ -21,6 +21,7 @@ import { log, warn, error, Verbose } from './services.js'
 import conf, { revealConf } from './conf.js'
 import auth from './middleware/auth.js'
 import restAPI from './rest-api.js'
+import { subscriptionsWebhook } from './routes/subscriptions.js'
 import routes from './routes/index.js'
 import session from './middleware/session.js'
 import { sendError } from './middleware/errors.js'
@@ -56,6 +57,12 @@ if (conf.ssl.enable) {
 } else {
   server = http.createServer(app)
 }
+
+// It should go before parsers such as express.json()
+app.post('/v1/subscriptions/webhook',
+  express.raw({ type: 'application/json' }),
+  subscriptionsWebhook,
+);
 
 // Express middleware configuration
 app.use(compression()) // gzip compression
