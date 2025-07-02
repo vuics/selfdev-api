@@ -31,7 +31,7 @@ app.get('/config', async (req, res) => {
       publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
     });
   } catch (err) {
-    return res.status(500).send({ result: 'error', message: err.toString() });
+    return res.status(400).send({ result: 'error', message: err.toString() });
   }
 });
 
@@ -106,7 +106,7 @@ app.get('/prices', async (req, res) => {
       prices: prices.data,
     });
   } catch (err) {
-    return res.status(500).send({ result: 'error', message: err.message });
+    return res.status(400).send({ result: 'error', message: err.toString() });
   }
 });
 
@@ -122,12 +122,8 @@ app.get('/', checkAuth, async (req, res) => {
   res.json({ subscriptions });
 });
 
-app.post('/create', checkAuth, async (req, res) => {
-  verbose('create subscription body:', req.body)
-
+async function ensureCustomerExists ({ req }) {
   try {
-    const { priceId } = req.body;
-    verbose('priceId:', priceId)
 
     verbose('req.user:', req.user)
     verbose('req.user.email:', req.user.email)
@@ -139,6 +135,7 @@ app.post('/create', checkAuth, async (req, res) => {
     }
 
     if (!req.user.stripe.customerId) {
+      verbose('Customer does not exist for user:', req.user.email, '. Creating.')
       const customer = await stripe.customers.create({
         email: req.user.email,
         name: `${req.user.firstName} ${req.user.lastName}`,
@@ -152,9 +149,24 @@ app.post('/create', checkAuth, async (req, res) => {
       verbose('customer:', customer)
       req.user.stripe.customerId = customer.id
       verbose('customerId:', req.user.stripe.customerId)
+
+      await req.user.save();
+      verbose('Saved stripe customer to user document:', req.user);
     }
-    await req.user.save();
-    verbose('Saved stripe customer to user document:', req.user);
+  } catch (err) {
+    error('Error ensuring customer exists:', err)
+    throw err
+  }
+}
+
+app.post('/create', checkAuth, async (req, res) => {
+  verbose('create subscription body:', req.body)
+
+  try {
+    const { priceId } = req.body;
+    verbose('priceId:', priceId)
+
+    await ensureCustomerExists({ req })
 
     const subscription = await stripe.subscriptions.create({
       customer: req.user.stripe.customerId,
@@ -185,7 +197,7 @@ app.post('/create', checkAuth, async (req, res) => {
       subscription,
       clientSecret: subscription.latest_invoice.payment_intent.client_secret,
     });
-  } catch (error) {
+  } catch (err) {
     return res.status(400).send({ result: 'error', message: err.toString() });
   }
 });
@@ -201,7 +213,7 @@ app.post('/cancel', checkAuth, async (req, res) => {
     verbose('canceledSubscription:', canceledSubscription)
 
     res.send({ canceledSubscription });
-  } catch (error) {
+  } catch (err) {
     return res.status(400).send({ result: 'error', message: err.toString() });
   }
 });
@@ -240,8 +252,8 @@ app.post('/invoice/preview', checkAuth, async (req, res) => {
 //       }
 //     );
 //     res.send({ subscription: updatedSubscription });
-//   } catch (error) {
-//     return res.status(400).send({ error: { message: err.toString() } });
+//   } catch (err) {
+//     return res.status(400).send({ result: 'error', message: err.toString() });
 //   }
 // });
 
@@ -331,84 +343,195 @@ export async function subscriptionsWebhook (req, res) {
 ///////////////////////////////////////////////////////////////////////////////
 // Metered Usage
 
-app.post('/create-customer', async (req, res) => {
-  try {
-    const customer = await stripe.customers.create({
-      name: req.body.name,
-      email: req.body.email,
-    });
-    res.send({ customer });
-  } catch (error) {
-    res.status(400).send({ error: { message: error.message } });
-  }
-});
+// app.post('/create-customer', checkAuth, async (req, res) => {
+//   try {
+//     verbose('/create-customer req.body:', req.body)
+//     const customer = await stripe.customers.create({
+//       name: req.body.name,
+//       email: req.body.email,
+//     });
+//     res.send({ customer });
+//   } catch (err) {
+//     return res.status(400).send({ result: 'error', message: err.toString() });
+//   }
+// });
 
-app.post('/create-meter', async (req, res) => {
+app.post('/create-meter', checkAuth, async (req, res) => {
   try {
-    const meter = await stripe.billing.meters.create({
-      display_name: req.body.displayName,
-      event_name: req.body.eventName,
-      default_aggregation: {
-        formula: req.body.aggregationFormula,
-      },
+    verbose('/create-meter req.body:', req.body)
+    const meters = await stripe.billing.meters.list({
+      status: 'active',
+      limit: 100,
     });
+    verbose('active meters:', meters)
+
+    let meter = null
+    const displayNames = meters.data.map(m => m.display_name) || []
+    verbose('displayNames:', displayNames)
+
+    if (!displayNames.includes('meter1')) {
+      verbose('Meter does not exist. Creating:', 'meter1')
+      meter = await stripe.billing.meters.create({
+        display_name: 'meter1',
+        event_name: 'event1',
+        default_aggregation: {
+          formula: 'sum',
+          // formula: 'count',
+        },
+      });
+      vebose('created meter:', meter)
+    }
     res.send({ meter });
-  } catch (error) {
-    res.status(400).send({ error: { message: error.message } });
+  } catch (err) {
+    return res.status(400).send({ result: 'error', message: err.toString() });
   }
 });
 
-const createMeterEvent = async (req, res) => {
+app.post('/create-price', checkAuth, async (req, res) => {
   try {
+    verbose('/create-price req.body:', req.body)
+    const lookup_keys = ['payasyougo1']
+
+    let prices = null
+    let price = null
+    // let update_prices = false
+
+    prices = await stripe.prices.list({
+      lookup_keys,
+      expand: ['data.product'],
+      limit: 100,
+    });
+    verbose('original prices:', prices)
+    const found_keys = prices?.data?.map(p => p.lookup_key) || []
+    verbose('found_keys:', found_keys)
+
+    if (!found_keys.includes("payasyougo1")) {
+      // update_prices = true
+      price = await stripe.prices.create({
+        lookup_key: "payasyougo1",
+        unit_amount: 12,
+        currency: 'usd',
+        recurring: {
+          interval: 'month',
+          meter: req.body.meterId,    // FIXME
+          usage_type: 'metered',
+        },
+        product_data: {
+          name: 'PayAsYouGo1',
+        },
+      });
+    } else {
+      price = prices?.data.find(p => p.lookup_key === 'payasyougo1')
+    }
+    res.send({ price });
+  } catch (err) {
+    return res.status(400).send({ result: 'error', message: err.toString() });
+  }
+});
+
+app.post('/create-subscription', checkAuth, async (req, res) => {
+  try {
+    verbose('/create-subscription req.body:', req.body)
+
+    await ensureCustomerExists({ req })
+
+    // create-meter
+
+    const meters = await stripe.billing.meters.list({
+      status: 'active',
+      limit: 100,
+    });
+    verbose('active meters:', meters)
+
+    let meter = null
+    const displayNames = meters.data.map(m => m.display_name) || []
+    verbose('displayNames:', displayNames)
+
+    if (!displayNames.includes('meter1')) {
+      verbose('Meter does not exist. Creating:', 'meter1')
+      meter = await stripe.billing.meters.create({
+        display_name: 'meter1',
+        event_name: 'event1',
+        default_aggregation: {
+          formula: 'sum',
+          // formula: 'count',
+        },
+      });
+      vebose('created meter:', meter)
+    } else {
+      meter = meters?.data.find(m => m.display_name === 'meter1')
+    }
+
+
+    // create-price
+
+    const lookup_keys = ['payasyougo1']
+
+    let prices = null
+    let price = null
+    // let update_prices = false
+
+    prices = await stripe.prices.list({
+      lookup_keys,
+      expand: ['data.product'],
+      limit: 100,
+    });
+    verbose('original prices:', prices)
+    const found_keys = prices?.data?.map(p => p.lookup_key) || []
+    verbose('found_keys:', found_keys)
+
+    if (!found_keys.includes("payasyougo1")) {
+      // update_prices = true
+      price = await stripe.prices.create({
+        lookup_key: "payasyougo1",
+        unit_amount: 12,
+        currency: 'usd',
+        recurring: {
+          interval: 'month',
+          meter: req.body.meterId,    // FIXME
+          usage_type: 'metered',
+        },
+        product_data: {
+          name: 'PayAsYouGo1',
+        },
+      });
+    } else {
+      price = prices?.data.find(p => p.lookup_key === 'payasyougo1')
+    }
+
+
+    // create-subscription
+
+    const subscription = await stripe.subscriptions.create({
+      customer: req.user.stripe.customerId,
+      items: [{ price: price.id }],
+      expand: ['pending_setup_intent'],
+    });
+
+    res.send({ meter, price, subscription });
+  } catch (err) {
+    return res.status(400).send({ result: 'error', message: err.toString() });
+  }
+})
+
+app.post('/create-meter-event', checkAuth, async (req, res) => {
+  try {
+    verbose('/create-meter-event req.body:', req.body)
+
+    await ensureCustomerExists({ req })
+
     const meterEvent = await stripe.v2.billing.meterEvents.create({
-      event_name: req.body.eventName,
+      event_name: req.body.eventName, // FIXME
       payload: {
-        value: req.body.value + '',
-        stripe_customer_id: req.body.customerId,
+        value: req.body.value + '',   // FIXME
+        stripe_customer_id: req.user.stripe.customerId,
       },
     });
     res.send({ meterEvent });
-  } catch (error) {
-    res.status(400).send({ error: { message: error.message } });
+  } catch (err) {
+    return res.status(400).send({ result: 'error', message: err.toString() });
   }
-}
-app.post('/create-meter-event', createMeterEvent);
-// app.post('/api/create-meter-event', createMeterEvent);
-
-app.post('/create-price', async (req, res) => {
-  try {
-    const price = await stripe.prices.create({
-      currency: req.body.currency,
-      unit_amount: req.body.amount,
-      recurring: {
-        interval: 'month',
-        meter: req.body.meterId,
-        usage_type: 'metered',
-      },
-      product_data: {
-        name: req.body.productName,
-      },
-    });
-    res.send({ price });
-  } catch (error) {
-    res.status(400).send({ error: { message: error.message } });
-  }
-});
-
-const createSubscription = async (req, res) => {
-  try {
-    const subscription = await stripe.subscriptions.create({
-      customer: req.body.customerId,
-      items: [{ price: req.body.priceId }],
-      expand: ['pending_setup_intent'],
-    });
-    res.send({ subscription });
-  } catch (error) {
-    res.status(400).send({ error: { message: error.message } });
-  }
-}
-app.post('/create-subscription', createSubscription);
-// app.post('/api/create-subscription', createSubscription);
+})
 
 //
 ///////////////////////////////////////////////////////////////////////////////
