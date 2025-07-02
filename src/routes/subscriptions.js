@@ -349,9 +349,9 @@ const meterEventName = 'meter3'
 const priceKey = 'payasyougo3'
 const productName = 'PayAsYouGo3'
 
-app.post('/create-subscription', checkAuth, async (req, res) => {
+app.post('/metered/create', checkAuth, async (req, res) => {
   try {
-    verbose('/create-subscription req.body:', req.body)
+    verbose('/metered/create req.body:', req.body)
 
     await ensureCustomerExists({ req })
 
@@ -425,9 +425,9 @@ app.post('/create-subscription', checkAuth, async (req, res) => {
   }
 })
 
-app.post('/create-meter-event', checkAuth, async (req, res) => {
+app.post('/metered/meter', checkAuth, async (req, res) => {
   try {
-    verbose('/create-meter-event req.body:', req.body)
+    verbose('/metered/meter req.body:', req.body)
     await ensureCustomerExists({ req })
 
     const meterEvent = await stripe.v2.billing.meterEvents.create({
