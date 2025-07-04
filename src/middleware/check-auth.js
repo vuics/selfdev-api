@@ -17,7 +17,34 @@ export const checkAuth = (req, res, next) => {
   }
 }
 
-export const checkAPIAuth = passport.authenticate('bearer', { session: false })
+export const checkAPIAuth = (req, res, next) => {
+  passport.authenticate('bearer', { session: false }, (err, user, info) => {
+    if (err) {
+      return next(err);
+    }
+    if (!user) {
+      return res.status(401).json({
+        result: 'error',
+        message: 'Unauthorized',
+      });
+    }
+    req.user = user; // Important: attach the authenticated user to the request
+
+    // Optional: Verbose logging for debugging
+    verbose('req.user?.limits:', req.user?.limits);
+    verbose('req.user?.limits?.apiAccess:', req.user?.limits?.apiAccess);
+
+    if (req.user?.limits?.apiAccess != null && !req.user?.limits?.apiAccess) {
+      return res.status(403).json({
+        result: 'error',
+        message: 'You do not have access to the API',
+      });
+    }
+
+    next();
+  })(req, res, next);
+};
+
 
 export const checkLoginOrBearer = (req, res, next) => {
   // verbose('checkAuth: req: ', req)

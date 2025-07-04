@@ -36,12 +36,17 @@ const schema = mongoose.Schema({
     imagegenProviders: [String],
     avatarProviders: [String],
 
-    // models: [String],
+    apiAccess: Boolean,
+
+    // TODO: add limits for:
+    //
     // maps: Number,
+    //
     // audioRecordings: Boolean,
     // fileAttachments: Boolean,
-    // apiAccess: Boolean,
     // syntheticUi: Boolean,
+    //
+    // models: [String],
   },
 
   rememberMe: {
