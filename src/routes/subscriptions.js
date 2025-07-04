@@ -1,12 +1,11 @@
 import { Router, raw } from 'express'
 import Stripe from 'stripe'
+import { inspect } from 'util'
 
 import conf from '../conf.js'
 import { checkAuth, checkAPIAuth } from '../middleware/check-auth.js'
 import { Verbose, error } from '../services.js'
-
-// TODO: deprecate?
-// import Subscription from '../models/subscription.js'
+import User from '../models/user.js'
 
 const verbose = Verbose('sd:routes/subscriptions'); verbose('')
 const app = Router()
@@ -332,23 +331,124 @@ export async function subscriptionsWebhook (req, res) {
   // Remove comment to see the various objects sent for this sample
   switch (event.type) {
     case 'invoice.payment_succeeded':
+      verbose('invoice.payment_succeeded dataObject:', dataObject)
       if(dataObject['billing_reason'] == 'subscription_create') {
+        try {
         // The subscription automatically activates after successful payment
         // Set the payment method used to pay the first invoice
         // as the default payment method for that subscription
         const subscription_id = dataObject['subscription']
         const payment_intent_id = dataObject['payment_intent']
+        verbose('subscription_id:', subscription_id)
+        verbose('payment_intent_id:', payment_intent_id)
 
         // Retrieve the payment intent used to pay the subscription
         const payment_intent = await stripe.paymentIntents.retrieve(payment_intent_id);
-        try {
+        verbose('payment_intent:', payment_intent)
           const subscription = await stripe.subscriptions.update(subscription_id, {
             default_payment_method: payment_intent.payment_method,
+            // expand: ['data.default_payment_method'],
           });
-          console.log("Default payment method set for subscription:" + payment_intent.payment_method);
+          verbose('subscription:', inspect(subscription, { depth: null, colors: true }))
+          console.log("Default payment method set for subscription:", payment_intent.payment_method);
+
+          const user = await User.findOne({ 'stripe.customerId': payment_intent.customer });
+          if (!user) {
+            error('User was not found for the customer:', payment_intent.customer);
+          } else {
+
+            const priceKey = subscription?.items?.data[0]?.price?.lookup_key
+            if (priceKey === 'free') {
+              user.limits = {
+                apiAccess: false,
+                maps: 3,
+                deployedAgents: 0,
+                archetypes: [ ],
+                chatProviders: [ ],
+                ragProviders: [ ],
+                ragEmbeddingsProviders: [ ],
+                sttProviders: [],
+                ttsProviders: [],
+                imagegenProviders: [],
+                avatarProviders: [],
+                audioRecordings: false,
+                fileAttachments: false,
+                synthetic: false,
+              }
+            } else if (priceKey === 'basic') {
+              user.limits = {
+                apiAccess: false,
+                maps: 30,
+                deployedAgents: 3,
+                archetypes: [ 'chat-v1.0', 'rag-v1.0', 'storage-v1.0', ],
+                chatProviders: [ 'openai' ],
+                ragProviders: [ 'openai' ],
+                ragEmbeddingsProviders: [ 'openai' ],
+                sttProviders: [],
+                ttsProviders: [],
+                imagegenProviders: [],
+                avatarProviders: [],
+                audioRecordings: false,
+                fileAttachments: false,
+                synthetic: false,
+              }
+            } else if (priceKey === 'premium') {
+              user.limits = {
+                apiAccess: true,
+                maps: 30,
+                deployedAgents: 3,
+                archetypes: [
+                  'chat-v1.0', 'rag-v1.0', 'storage-v1.0',
+                  'stt-v1.0', 'tts-v1.0', 'imagegen-v1.0',
+                ],
+                chatProviders: [ 'openai', 'google_genai' ],
+                ragProviders: [ 'openai', 'google_genai' ],
+                ragEmbeddingsProviders: [ 'openai', 'google_genai' ],
+                sttProviders: [ 'speaches' ],
+                ttsProviders: [ 'speaches' ],
+                imagegenProviders: [ 'openai' ],
+                avatarProviders: [ ],
+                audioRecordings: false,
+                fileAttachments: false,
+                synthetic: false,
+              }
+            } else if (priceKey === 'enterprise') {
+              user.limits = {
+                apiAccess: true,
+                maps: null,
+                deployedAgents: null,
+                archetypes: null,
+                chatProviders: null,
+                ragProviders: null,
+                ragEmbeddingsProviders: null,
+                sttProviders: null,
+                ttsProviders: null,
+                imagegenProviders: null,
+                avatarProviders: null,
+                audioRecordings: true,
+                fileAttachments: true,
+                synthetic: true,
+              }
+            } else {
+              error('Unknown price lookup_key:', priceKey)
+            }
+
+            await user.save();
+
+            // const price = await stripe.prices.retrieve(subscription.plan.id)
+            // console.log('price:', price)
+
+            // const product = await stripe.products.retrieve(subscription.plan.product)
+            // console.log('product:', product)
+
+          }
+
+          // payment_intent.customer: 'cus_SbHdPzot08iHdY',
+          // subscription.customer: 'cus_SbHdPzot08iHdY',
+
         } catch (err) {
-          console.log(err);
-          console.log(`⚠️  Failed to update the default payment method for subscription: ${subscription_id}`);
+          error('Webhook invoice.payment_succeeded error:', err);
+          error(`⚠️  Failed to update the default payment method for subscription: ${subscription_id}`);
         }
       };
 
