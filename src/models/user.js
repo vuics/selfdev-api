@@ -25,10 +25,12 @@ const schema = mongoose.Schema({
   },
 
   limits: {
+    // backend limits
+    apiAccess: Boolean,
     maps: Number,
     deployedAgents: Number,
     archetypes: [String],
-
+    //
     chatProviders: [String],
     ragProviders: [String],
     ragEmbeddingsProviders: [String],
@@ -37,15 +39,10 @@ const schema = mongoose.Schema({
     imagegenProviders: [String],
     avatarProviders: [String],
 
-    apiAccess: Boolean,
-
+    // front-end limits
     audioRecordings: Boolean,
     fileAttachments: Boolean,
-
-    // TODO: add limits for:
-    //
-    // models: [String],
-    // syntheticUi: Boolean,
+    synthetic: Boolean,
   },
 
   rememberMe: {
