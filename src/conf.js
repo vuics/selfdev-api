@@ -254,7 +254,7 @@ const conf = {
 
     // NOTE: this is for the test of creating product/price/meters
     //
-    /*
+    /**/
     test1: {
       product: {
         name: 'Test1',
@@ -332,13 +332,13 @@ const conf = {
         },
       }],
       limits: {
-        apiAccess: false,
+        apiAccess: true,
         maps: 69,
         deployedAgents: 99,
         archetypes: [ 'chat-v1.0', 'rag-v1.0' ],
-        chatProviders: [ 'google_genai' ],
-        ragProviders: [ 'google_genai' ],
-        ragEmbeddingsProviders: [ 'google_genai' ],
+        chatProviders: [ 'openai', 'google_genai' ],
+        ragProviders: [ 'openai', 'google_genai' ],
+        ragEmbeddingsProviders: [ 'openai', 'google_genai' ],
         sttProviders: [],
         ttsProviders: [],
         imagegenProviders: [],
@@ -348,7 +348,7 @@ const conf = {
         synthetic: true,
       },
     },
-    */
+    /**/
   },
 
   xmpp: {
