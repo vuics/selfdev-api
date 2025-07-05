@@ -348,6 +348,46 @@ const conf = {
         synthetic: true,
       },
     },
+    test5: {
+      product: {
+        name: 'Test5',
+      },
+      prices: [{
+        lookup_key: "test5",
+        unit_amount: 9399,
+        currency: 'usd',
+        recurring: { interval: 'month', },
+      }, {
+        lookup_key: 'test5-payasyougo',
+        unit_amount_decimal: '0.0036',
+        currency: 'usd',
+        recurring: {
+          interval: 'month',
+          usage_type: 'metered',
+          meter: {   // NOTE: the subobject will be replaced with meter: meter.id,
+            display_name: 'Test5-Meter1',
+            event_name: 'test5-meter1',
+            default_aggregation: { formula: 'sum', },
+          },
+        },
+      }],
+      limits: {
+        apiAccess: true,
+        maps: 300,
+        deployedAgents: 133,
+        archetypes: [ 'chat-v1.0', 'rag-v1.0' ],
+        chatProviders: [ 'openai', 'google_genai' ],
+        ragProviders: [ 'openai', 'google_genai' ],
+        ragEmbeddingsProviders: [ 'openai', 'google_genai' ],
+        sttProviders: [],
+        ttsProviders: [],
+        imagegenProviders: [],
+        avatarProviders: [],
+        audioRecordings: true,
+        fileAttachments: true,
+        synthetic: true,
+      },
+    },
     /**/
   },
 
