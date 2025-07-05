@@ -15,10 +15,12 @@ Configure environment variables in [./env](./env) using example of [./env.exampl
 ### Configure Stripe
 
 You have to create a webhook in a Stripe Dashboard separately for each environment:
-* [Stripe Sandbox webhooks](https://dashboard.stripe.com/test/webhooks)
-* [Stripe live webhooks](https://dashboard.stripe.com/webhooks)
+  * [Stripe Sandbox webhooks](https://dashboard.stripe.com/test/webhooks). The webhook should be pointing to local address. You can use the `listen` command in `./package.json` to setup local webhook.
+  * [Stripe live webhooks](https://dashboard.stripe.com/webhooks). The webhook should be pointing to `https://hyag.org/v1/subscriptions/webhook`.
 
-The webhook should be pointing to `https://hyag.org/v1/subscriptions/webhook`.
+Select webhook events to send:
+  * `invoice.payment_succeeded`
+  * `customer.subscription.deleted`
 
 On local dev, you can get the webhook events with stripe CLI tool:
 ```bash
@@ -33,4 +35,3 @@ See: [stripe-cli](https://docs.stripe.com/stripe-cli).
 ```bash
 npm start
 ```
-
