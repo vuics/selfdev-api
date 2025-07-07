@@ -500,40 +500,48 @@ app.post('/metered/meter', checkAuth, async (req, res) => {
 
 export async function updateUserLimits ({ user }) {
   try {
-    verbose('updateUserLimits user.limits (before):', user.limits)
-    if (!user.stripe?.customerId) {
-      // verbose('updateUserLimits plans.free.limits:', conf.plans.free.limits)
-      user.limits = conf.plans.free.limits;
+    verbose('updateUserLimits user.limits (before):', user.limits, ', limits enabled:', conf.limits.enable)
+    if (!conf.limits.enable) {
+      verbose('user.limits (before):', user.limits)
+      if (user.limits) {
+        user.set('limits', undefined);
+      }
+      verbose('user.limits (after):', user.limits)
     } else {
-      if (user.stripe.customerId) {
-        const subscriptions = await stripe.subscriptions.list({
-          customer: user.stripe.customerId,
-          status: 'active',
-          // expand: ['data.default_payment_method'],
-        });
-        verbose('subscriptions:', inspect(subscriptions, { depth: null, colors: true }))
+      if (!user.stripe?.customerId) {
+        // verbose('updateUserLimits plans.free.limits:', conf.plans.free.limits)
+        user.limits = conf.plans.free.limits;
+      } else {
+        if (user.stripe.customerId) {
+          const subscriptions = await stripe.subscriptions.list({
+            customer: user.stripe.customerId,
+            status: 'active',
+            // expand: ['data.default_payment_method'],
+          });
+          verbose('subscriptions:', inspect(subscriptions, { depth: null, colors: true }))
 
-        // TODO: what to do with other active subscriptions in case there are multiple?
-        const subscription = subscriptions.data[0]
-        if (!subscription) {
-          user.limits = conf.plans.free.limits;
+          // TODO: what to do with other active subscriptions in case there are multiple?
+          const subscription = subscriptions.data[0]
+          if (!subscription) {
+            user.limits = conf.plans.free.limits;
+          }
+          verbose('first subscription:', inspect(subscription, { depth: null, colors: true }))
+
+          // Set user account limits
+          const priceKey = subscription?.items?.data[0]?.price?.lookup_key
+          verbose('priceKey:', priceKey)
+          if (priceKey && conf.plans[priceKey]) {
+            user.limits = conf.plans[priceKey].limits;
+          } else {
+            console.error('Unknown price lookup_key:', priceKey);
+            user.limits = conf.plans.free.limits;
+          }
+
+          // const price = await stripe.prices.retrieve(subscription.plan.id)
+          // console.log('price:', price)
+          // const product = await stripe.products.retrieve(subscription.plan.product)
+          // console.log('product:', product)
         }
-        verbose('first subscription:', inspect(subscription, { depth: null, colors: true }))
-
-        // Set user account limits
-        const priceKey = subscription?.items?.data[0]?.price?.lookup_key
-        verbose('priceKey:', priceKey)
-        if (priceKey && conf.plans[priceKey]) {
-          user.limits = conf.plans[priceKey].limits;
-        } else {
-          console.error('Unknown price lookup_key:', priceKey);
-          user.limits = conf.plans.free.limits;
-        }
-
-        // const price = await stripe.prices.retrieve(subscription.plan.id)
-        // console.log('price:', price)
-        // const product = await stripe.products.retrieve(subscription.plan.product)
-        // console.log('product:', product)
       }
     }
     await user.save()

@@ -150,6 +150,10 @@ const conf = {
     // endpointSecret: process.env.STRIPE_ENDPOINT_SECRET || '<STRIPE_ENDPOINT_SECRET_PLACEHOLDER>',
   },
 
+  limits: {
+    enable: bool(process.env.LIMITS_ENABLE || true),
+  },
+
   plans: {
     free: {
       limits: {
