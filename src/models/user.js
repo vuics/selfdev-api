@@ -16,6 +16,16 @@ const schema = mongoose.Schema({
   phone: { type: String, required: false },
   roles: [String], // 'user'
 
+  address: {
+    line1: String,
+    line2: String,
+    city: String,
+    state: String,
+    // postal_code: String,
+    postalCode: String,
+    country: String,
+  },
+
   settings: {
     language: String,
   },
