@@ -174,31 +174,33 @@ const conf = {
       },
     },
     basic: {
-       product: {
-         name: 'Basic',
-       },
-       prices: [{
-         lookup_key: "basic",
-         unit_amount: 699,
-         currency: 'usd',
-         recurring: { interval: 'month', },
-       }, {
-         lookup_key: 'payasyougo3',
-         unit_amount: 12,
-         currency: 'usd',
-         recurring: {
-           interval: 'month',
-           usage_type: 'metered',
+      product: {
+        name: 'Basic',
+      },
+      prices: [{
+        lookup_key: "basic",
+        unit_amount: 699,
+        currency: 'usd',
+        recurring: { interval: 'month', },
+      }, {
+        lookup_key: 'payasyougo3',
+        unit_amount: 12,
+        currency: 'usd',
+        recurring: {
+          interval: 'month',
+          usage_type: 'metered',
 
-           // meter: meter.id,
-           meter: {
-             display_name: 'Meter3',
-             event_name: 'meter3',
-             default_aggregation: { formula: 'sum', },
-           },
-         },
-       }],
-
+          // meter: meter.id,
+          meter: {
+            display_name: 'Meter3',
+            event_name: 'meter3',
+            default_aggregation: { formula: 'sum', },
+          },
+        },
+      }],
+      // subscription: {
+      //   trial_period_days: 3,
+      // },
       limits: {
         apiAccess: false,
         maps: 30,
@@ -375,6 +377,49 @@ const conf = {
           },
         },
       }],
+      limits: {
+        apiAccess: true,
+        maps: 300,
+        deployedAgents: 133,
+        archetypes: [ 'chat-v1.0', 'rag-v1.0' ],
+        chatProviders: [ 'openai', 'google_genai' ],
+        ragProviders: [ 'openai', 'google_genai' ],
+        ragEmbeddingsProviders: [ 'openai', 'google_genai' ],
+        sttProviders: [],
+        ttsProviders: [],
+        imagegenProviders: [],
+        avatarProviders: [],
+        audioRecordings: true,
+        fileAttachments: true,
+        synthetic: true,
+      },
+    },
+    test6: {
+      product: {
+        name: 'Test6',
+      },
+      prices: [{
+        lookup_key: 'test6',
+        unit_amount: 1,
+        currency: 'usd',
+        recurring: { interval: 'month', },
+      }, {
+        lookup_key: 'test6-payasyougo',
+        unit_amount_decimal: '0.1',
+        currency: 'usd',
+        recurring: {
+          interval: 'month',
+          usage_type: 'metered',
+          meter: {   // NOTE: the subobject will be replaced with meter: meter.id,
+            display_name: 'Test6-Meter1',
+            event_name: 'test6-meter1',
+            default_aggregation: { formula: 'sum', },
+          },
+        },
+      }],
+      subscription: {
+        trial_period_days: 7,
+      },
       limits: {
         apiAccess: true,
         maps: 300,
