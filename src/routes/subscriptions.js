@@ -137,7 +137,13 @@ app.get('/', checkAuth, async (req, res) => {
   res.json({ subscriptions });
 });
 
-async function ensureCustomerExists ({ req }) {
+function getCustomerIpAddress ({ req }) {
+  const forwarded = req.headers['x-forwarded-for'];
+  const ip = forwarded ? forwarded.split(',')[0] : req.connection.remoteAddress;
+  return ip
+}
+
+async function updateCustomer ({ req }) {
   try {
 
     verbose('req.user:', req.user)
@@ -149,25 +155,57 @@ async function ensureCustomerExists ({ req }) {
       };
     }
 
+    const ip_address = getCustomerIpAddress({ req })
+    verbose('customer ip_address:', ip_address)
+
+    let customer = null
+    const customerData = {
+      email: req.user.email,
+      name: `${req.user.firstName} ${req.user.lastName}`,
+      phone: req.user.phone,
+      address: {
+        line1: req.user.address.line1,
+        line2: req.user.address.line2,
+        city: req.user.address.city,
+        state: req.user.address.state,
+        postal_code: req.user.address.postalCode,
+        country: req.user.address.country,
+      },
+      tax: {
+        ip_address,
+        validate_location: 'immediately',
+      },
+
+      // TODO: add user tax data
+      //
+      // tax_id_data: {
+      //   type: '',  // Type of the tax ID, one of ad_nrt, ae_trn, al_tin, am_tin, ao_tin, ar_cuit, au_abn, au_arn, aw_tin, az_tin, ba_tin, bb_tin, bd_bin, bf_ifu, bg_uic, bh_vat, bj_ifu, bo_tin, br_cnpj, br_cpf, bs_tin, by_tin, ca_bn, ca_gst_hst, ca_pst_bc, ca_pst_mb, ca_pst_sk, ca_qst, cd_nif, ch_uid, ch_vat, cl_tin, cm_niu, cn_tin, co_nit, cr_tin, cv_nif, de_stn, do_rcn, ec_ruc, eg_tin, es_cif, et_tin, eu_oss_vat, eu_vat, gb_vat, ge_vat, gn_nif, hk_br, hr_oib, hu_tin, id_npwp, il_vat, in_gst, is_vat, jp_cn, jp_rn, jp_trn, ke_pin, kg_tin, kh_tin, kr_brn, kz_bin, la_tin, li_uid, li_vat, ma_vat, md_vat, me_pib, mk_vat, mr_nif, mx_rfc, my_frp, my_itn, my_sst, ng_tin, no_vat, no_voec, np_pan, nz_gst, om_vat, pe_ruc, ph_tin, ro_tin, rs_pib, ru_inn, ru_kpp, sa_vat, sg_gst, sg_uen, si_tin, sn_ninea, sr_fin, sv_nit, th_vat, tj_tin, tr_tin, tw_vat, tz_vat, ua_vat, ug_tin, us_ein, uy_ruc, uz_tin, uz_vat, ve_rif, vn_tin, za_vat, zm_tin, or zw_tin
+      //   value: '',
+      // },
+      // tax_exempt: 'none',  // The customer’s tax exemption. One of none, exempt, or reverse.
+
+      metadata: {
+        userId: req.user._id.toString(),
+        firstName: req.user.firstName,
+        lastName: req.user.lastName,
+      },
+    }
+    verbose('customer data:', customerData)
+
     if (!req.user.stripe.customerId) {
       verbose('Customer does not exist for user:', req.user.email, '. Creating.')
-      const customer = await stripe.customers.create({
-        email: req.user.email,
-        name: `${req.user.firstName} ${req.user.lastName}`,
-        phone: req.user.phone,
-        metadata: {
-          userId: req.user._id.toString(),
-          firstName: req.user.firstName,
-          lastName: req.user.lastName,
-        },
-      });
-      verbose('customer:', customer)
+      customer = await stripe.customers.create(customerData);
       req.user.stripe.customerId = customer.id
-      verbose('customerId:', req.user.stripe.customerId)
-
       await req.user.save();
       verbose('Saved stripe customer to user document:', req.user);
+    } else {
+      customer = await stripe.customers.update(
+        req.user.stripe.customerId,
+        customerData,
+      );
     }
+    verbose('customer:', customer)
+    verbose('customerId:', req.user.stripe.customerId)
   } catch (err) {
     error('Error ensuring customer exists:', err)
     throw err
@@ -181,11 +219,12 @@ app.post('/create', checkAuth, async (req, res) => {
     const { priceId } = req.body;
     verbose('priceId:', priceId)
 
-    await ensureCustomerExists({ req })
+    await updateCustomer({ req })
 
     const subscription = await stripe.subscriptions.create({
       customer: req.user.stripe.customerId,
       items: [{
+        // TODO: make it with multiple prices
         price: priceId,
       }],
       payment_behavior: 'default_incomplete',
@@ -204,7 +243,7 @@ app.post('/create', checkAuth, async (req, res) => {
       // >  The customer's location isn't recognized.
       // >  Set a valid customer address in order to automatically calculate tax.
       //
-      // automatic_tax: { enabled: true },
+      automatic_tax: { enabled: true },
     });
     verbose('subscription:', subscription)
 
@@ -213,6 +252,7 @@ app.post('/create', checkAuth, async (req, res) => {
       clientSecret: subscription.latest_invoice.payment_intent.client_secret,
     });
   } catch (err) {
+    error('Error creating subscription:', err)
     return res.status(400).send({ result: 'error', message: err.toString() });
   }
 });
@@ -229,6 +269,7 @@ app.post('/cancel', checkAuth, async (req, res) => {
 
     res.send({ canceledSubscription });
   } catch (err) {
+    error('Error canceling subscription:', err)
     return res.status(400).send({ result: 'error', message: err.toString() });
   }
 });
@@ -408,7 +449,7 @@ app.post('/metered/create', checkAuth, async (req, res) => {
   try {
     verbose('/metered/create req.body:', req.body)
 
-    await ensureCustomerExists({ req })
+    await updateCustomer({ req })
 
     verbose('create-meter')
     const meters = await stripe.billing.meters.list({
@@ -483,7 +524,7 @@ app.post('/metered/create', checkAuth, async (req, res) => {
 app.post('/metered/meter', checkAuth, async (req, res) => {
   try {
     verbose('/metered/meter req.body:', req.body)
-    await ensureCustomerExists({ req })
+    // await updateCustomer({ req })
 
     const meterEvent = await stripe.v2.billing.meterEvents.create({
       event_name: meterEventName,

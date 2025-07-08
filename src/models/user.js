@@ -22,7 +22,6 @@ const schema = mongoose.Schema({
     line2: String,
     city: String,
     state: String,
-    // postal_code: String,
     postalCode: String,
     country: String,
   },
