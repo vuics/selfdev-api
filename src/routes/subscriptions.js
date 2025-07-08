@@ -5,7 +5,7 @@ import lodash from 'lodash'
 const { isEmpty } = lodash
 
 import conf from '../conf.js'
-import { checkAuth, checkAPIAuth } from '../middleware/check-auth.js'
+import { checkAuth, checkAPIAuth, checkAdmin } from '../middleware/check-auth.js'
 import { Verbose, error } from '../services.js'
 import User from '../models/user.js'
 
@@ -28,7 +28,7 @@ const stripe = Stripe(conf.stripe.secretKey, {
   }
 })
 
-app.get('/config', async (req, res) => {
+app.post('/admin-init', checkAuth, checkAdmin, async (req, res) => {
   try {
     const products = await stripe.products.list({
       active: true,
@@ -37,8 +37,6 @@ app.get('/config', async (req, res) => {
     verbose('products:', products)
 
     const prices = await stripe.prices.list({
-      // lookup_keys,
-      // expand: ['data.product'],
       active: true,
       limit: 100,
     });
@@ -106,6 +104,30 @@ app.get('/config', async (req, res) => {
       }
     }
 
+    const updatedProducts = await stripe.products.list({
+      active: true,
+      limit: 100,
+    })
+    const updatedPrices = await stripe.prices.list({
+      active: true,
+      limit: 100,
+    });
+    const updatedMeters = await stripe.billing.meters.list({
+      status: 'active',
+      limit: 100,
+    });
+    res.send({
+      products: updatedProducts,
+      prices: updatedPrices,
+      meters: updatedMeters,
+    });
+  } catch (err) {
+    return res.status(400).send({ result: 'error', message: err.toString() });
+  }
+});
+
+app.get('/config', checkAuth, async (req, res) => {
+  try {
     res.send({
       publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
     });
