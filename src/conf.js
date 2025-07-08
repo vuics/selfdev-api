@@ -437,6 +437,49 @@ const conf = {
         synthetic: true,
       },
     },
+    test8: {
+      product: {
+        name: 'Test8',
+      },
+      prices: [{
+        lookup_key: 'test8',
+        unit_amount: 12.34,
+        currency: 'usd',
+        recurring: { interval: 'month', },
+      }, {
+        lookup_key: 'test8-payasyougo',
+        unit_amount_decimal: '0.02',
+        currency: 'usd',
+        recurring: {
+          interval: 'month',
+          usage_type: 'metered',
+          meter: {   // NOTE: the subobject will be replaced with meter: meter.id,
+            display_name: 'Test8-Meter1',
+            event_name: 'test8-meter1',
+            default_aggregation: { formula: 'sum', },
+          },
+        },
+      }],
+      // subscription: {
+      //   trial_period_days: 7,
+      // },
+      limits: {
+        apiAccess: true,
+        maps: 300,
+        deployedAgents: 133,
+        archetypes: [ 'chat-v1.0', 'rag-v1.0' ],
+        chatProviders: [ 'openai', 'google_genai' ],
+        ragProviders: [ 'openai', 'google_genai' ],
+        ragEmbeddingsProviders: [ 'openai', 'google_genai' ],
+        sttProviders: [],
+        ttsProviders: [],
+        imagegenProviders: [],
+        avatarProviders: [],
+        audioRecordings: true,
+        fileAttachments: true,
+        synthetic: true,
+      },
+    },
     /**/
   },
 
