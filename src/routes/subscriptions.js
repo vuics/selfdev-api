@@ -349,7 +349,7 @@ app.post('/invoice/preview', checkAuth, async (req, res) => {
 });
 
 // Set webhook to :
-//   https://hyag.org/v1/subscriptions/webhook
+//   https://api.hyag.org/v1/subscriptions/webhook
 //
 export async function subscriptionsWebhook (req, res) {
   // Retrieve the event by verifying the signature using the raw body and secret.

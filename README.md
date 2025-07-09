@@ -16,8 +16,9 @@ Configure environment variables in [./env](./env) using example of [./env.exampl
 
 You have to create a webhook in a Stripe Dashboard separately for each environment:
   * [Stripe Sandbox webhooks](https://dashboard.stripe.com/test/webhooks). The webhook should be pointing to local address. You can use the `listen` command in `./package.json` to setup local webhook.
-  * [Stripe live webhooks](https://dashboard.stripe.com/webhooks). The webhook should be pointing to `https://hyag.org/v1/subscriptions/webhook`.
+  * [Stripe live webhooks](https://dashboard.stripe.com/webhooks). The webhook should be pointing to `https://api.hyag.org/v1/subscriptions/webhook`.
 
+Select API version: `2020-03-02`.
 Select webhook events to send:
   * `invoice.payment_succeeded`
   * `customer.subscription.deleted`
