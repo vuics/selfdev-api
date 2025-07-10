@@ -2,7 +2,7 @@ import crypto from 'crypto'
 import { join } from 'path'
 import resourceJS from 'resourcejs'
 import lodash from 'lodash'
-const { isArray } = lodash
+const { isArray, has } = lodash
 
 import User from './models/user.js'
 import Key from './models/key.js'
@@ -132,7 +132,8 @@ const getResources = (app) => {
                 }
               }
 
-              if (req.user?.limits?.deployedAgents != null &&
+              if (has(req.user, 'limits.deployedAgents') &&
+                  req.user?.limits?.deployedAgents != null &&
                   deployedCount >= req.user.limits.deployedAgents) {
                 return res.status(403).json({
                   result: 'error',
@@ -140,7 +141,8 @@ const getResources = (app) => {
                 });
               }
 
-              if (req.user?.limits?.archetypes != null &&
+              if (has(req.user, 'limits.archetypes') &&
+                  req.user?.limits?.archetypes != null &&
                   !req.user?.limits?.archetypes.includes(req.body.archetype)) {
                 return res.status(403).json({
                   result: 'error',
@@ -150,15 +152,17 @@ const getResources = (app) => {
 
               verbose('req.user.limits:', req.user.limits)
               verbose('req.body.options:', req.body.options)
-              if (req.user?.limits?.chatProviders != null &&
-                req.body.options?.chat?.model?.provider != null &&
-                !req.user?.limits?.chatProviders.includes(req.body.options.chat.model.provider)) {
+              if (has(req.user, 'limits.chatProviders') &&
+                  req.user?.limits?.chatProviders != null &&
+                  req.body.options?.chat?.model?.provider != null &&
+                  !req.user?.limits?.chatProviders.includes(req.body.options.chat.model.provider)) {
                 return res.status(403).json({
                   result: 'error',
                   message: `You are not allowed to deploy chat agents with model provider: ${req.body.options.chat.model.provider}`,
                 });
               }
-              if (req.user?.limits?.ragProviders != null &&
+              if (has(req.user, 'limits.ragProviders') &&
+                  req.user?.limits?.ragProviders != null &&
                   req.body.options?.rag?.model?.provider != null &&
                   !req.user?.limits?.ragProviders.includes(req.body.options.rag.model.provider)) {
                 return res.status(403).json({
@@ -166,7 +170,8 @@ const getResources = (app) => {
                   message: `You are not allowed to deploy rag agents with model provider: ${req.body.options.rag.model.provider}`,
                 });
               }
-              if (req.user?.limits?.ragEmbeddingsProviders != null &&
+              if (has(req.user, 'limits.ragEmbeddingsProviders') &&
+                  req.user?.limits?.ragEmbeddingsProviders != null &&
                   req.body.options?.rag?.embeddings?.provider != null &&
                   !req.user?.limits?.ragEmbeddingsProviders.includes(req.body.options.rag.embeddings.provider)) {
                 return res.status(403).json({
@@ -174,7 +179,8 @@ const getResources = (app) => {
                   message: `You are not allowed to deploy rag agents with embeddings provider: ${req.body.options.rag.embeddings.provider}`,
                 });
               }
-              if (req.user?.limits?.sttProviders != null &&
+              if (has(req.user, 'limits.sttProviders') &&
+                  req.user?.limits?.sttProviders != null &&
                   req.body.options?.stt?.model?.provider != null &&
                   !req.user?.limits?.sttProviders.includes(req.body.options.stt.model.provider)) {
                 return res.status(403).json({
@@ -182,7 +188,8 @@ const getResources = (app) => {
                   message: `You are not allowed to deploy stt agents with model provider: ${req.body.options.stt.model.provider}`,
                 });
               }
-              if (req.user?.limits?.ttsProviders != null &&
+              if (has(req.user, 'limits.ttsProviders') &&
+                  req.user?.limits?.ttsProviders != null &&
                   req.body.options?.tts?.model?.provider != null &&
                   !req.user?.limits?.ttsProviders.includes(req.body.options.tts.model.provider)) {
                 return res.status(403).json({
@@ -190,7 +197,8 @@ const getResources = (app) => {
                   message: `You are not allowed to deploy tts agents with model provider: ${req.body.options.tts.model.provider}`,
                 });
               }
-              if (req.user?.limits?.imagegenProviders != null &&
+              if (has(req.user, 'limits.imagegenProviders') &&
+                  req.user?.limits?.imagegenProviders != null &&
                   req.body.options?.imagegen?.model?.provider != null &&
                   !req.user?.limits?.imagegenProviders.includes(req.body.options.imagegen.model.provider)) {
                 return res.status(403).json({
@@ -198,7 +206,8 @@ const getResources = (app) => {
                   message: `You are not allowed to deploy imagegen agents with model provider: ${req.body.options.imagegen.model.provider}`,
                 });
               }
-              if (req.user?.limits?.avatarProviders != null &&
+              if (has(req.user, 'limits.avatarProviders') &&
+                  req.user?.limits?.avatarProviders != null &&
                   req.body.options?.avatar?.model?.provider != null &&
                   !req.user?.limits?.avatarProviders.includes(req.body.options.avatar.model.provider)) {
                 return res.status(403).json({
@@ -231,7 +240,8 @@ const getResources = (app) => {
           verbose('req.user.limits.maps:', req.user.limits.maps)
           try {
             if (req.method === 'POST') {
-              if (req.user?.limits?.maps != null) {
+              if (has(req.user, 'limits.maps') &&
+                  req.user?.limits?.maps != null) {
                 const currentCount = await Map.countDocuments({ userId: req.user._id });
                 verbose(`Maps limit: ${currentCount} / ${req.user.limits.maps}`)
                 if (currentCount >= req.user.limits.maps) {

@@ -1,4 +1,7 @@
 import passport from 'passport'
+import lodash from 'lodash'
+const { isArray, has } = lodash
+
 import { Verbose } from '../services.js'
 
 const verbose = Verbose('sd:middleware/check-auth'); verbose('')
@@ -34,7 +37,9 @@ export const checkAPIAuth = (req, res, next) => {
     verbose('req.user?.limits:', req.user?.limits);
     verbose('req.user?.limits?.apiAccess:', req.user?.limits?.apiAccess);
 
-    if (req.user?.limits?.apiAccess != null && !req.user?.limits?.apiAccess) {
+    if (has(req.user, 'limits.apiAccess') &&
+        req.user?.limits?.apiAccess != null &&
+        !req.user?.limits?.apiAccess) {
       return res.status(403).json({
         result: 'error',
         message: 'You do not have access to the API',
