@@ -125,7 +125,7 @@ const conf = {
     "identifier": "BUSL-1.1",
     "url": "https://github.com/vuics/hyag?tab=License-1-ov-file"
   },
-  "host": "selfdev-api.dev.local:6369",
+  "host": "api.hyag.org",
   "basePath": "",
   "schemes": ["https"],
   "servers": [ {
