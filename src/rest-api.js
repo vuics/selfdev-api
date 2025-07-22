@@ -2,7 +2,7 @@ import crypto from 'crypto'
 import { join } from 'path'
 import resourceJS from 'resourcejs'
 import lodash from 'lodash'
-const { isArray, has } = lodash
+const { isArray, has, each, assign } = lodash
 
 import User from './models/user.js'
 import Key from './models/key.js'
@@ -266,7 +266,67 @@ const getResources = (app) => {
 
 export let resources = {}
 
+function useSpec({ app, resources }) {
+  // Get the Swagger paths and definitions for each resource.
+  let paths = {};
+  let definitions = {};
+  each(resources, function (resource) {
+    const swagger = resource.swagger();
+
+    const shouldExclude = conf.resource.spec.excludes.some(key =>
+      has(swagger.definitions, key)
+    );
+    if (shouldExclude) {
+      return;
+    }
+
+    paths = assign(paths, swagger.paths);
+    definitions = assign(definitions, swagger.definitions);
+  });
+
+  // Define the specification.
+  const specification = {
+    swagger: '2.0',
+    ...conf.resource.spec.json,
+
+    definitions: definitions,
+    paths: paths,
+
+    // ✅ Add securityDefinitions for the Authorization header
+    securityDefinitions: {
+      Bearer: {
+        // type: 'apiKey',
+        // name: 'Authorization',
+        // in: 'header',
+        // description: 'Enter your bearer token in the format: Bearer <ACCESS_TOKEN>'
+
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        description: 'Authorization: Bearer <ACCESS_TOKEN>',
+      }
+    },
+
+    // ✅ Apply the Bearer auth globally to all endpoints
+    security: [
+      {
+        Bearer: []
+      }
+    ]
+  };
+
+  // Show the specification at the URL.
+  app.get('/v1/spec.json', function(req, res, next) {
+    res.json(specification);
+  });
+}
+
 export default (app) => {
   resources = getResources(app)
-  // console.log('resources:', resources)
+
+  if (conf.resource.spec.enable) {
+    useSpec({ app, resources })
+  }
+
+  // verbose('resources:', resources)
 }

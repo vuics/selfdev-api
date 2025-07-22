@@ -98,11 +98,43 @@ const conf = {
     // Resource.js API
     user: bool(process.env.RESOURCE_USER || false),
     key: bool(process.env.RESOURCE_KEY || true),
-    dialog: bool(process.env.RESOURCE_DIALOG || true),
-    landing: bool(process.env.RESOURCE_LANDING || true),
-    interest: bool(process.env.RESOURCE_INTEREST || true),
+    dialog: bool(process.env.RESOURCE_DIALOG || false),
+    landing: bool(process.env.RESOURCE_LANDING || false),
+    interest: bool(process.env.RESOURCE_INTEREST || false),
     agent: bool(process.env.RESOURCE_AGENT || true),
     map: bool(process.env.RESOURCE_MAP || true),
+
+    // Swagger Specification
+    spec: {
+      enable: bool(process.env.RESOURCE_SPEC_ENABLE || true),
+      excludes: arr(process.env.RESOURCE_SPEC_EXCLUDES || 'key,dialog,landing,interest'),
+
+      json: json(process.env.RESOURCE_SPEC_JSON || `{
+  "info": {
+    "title": "HyperAgency API Reference",
+    "description": "HyperAgency API provides a RESTful interface for managing and automating resources in the HyperAgency platform, including agents, execution maps, and other operational components. This API allows developers, integrators, and DevOps engineers to programmatically create, retrieve, update, and delete resources over HTTPS using standard tools such as curl or through client libraries in languages like Node.js, Python, and others. The API follows common REST conventions and supports JSON-encoded request and response bodies. All endpoints are versioned under v1 prefix and secured via HTTPS. Resources are organized by type (e.g., agent, map), and standard HTTP methods (GET, POST, PUT, DELETE) are used to perform operations.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "admin@vuics.com"
+    }
+  },
+  "license": {
+    "name": "Business Source License 1.1",
+    "identifier": "BUSL-1.1",
+    "url": "https://github.com/vuics/hyag?tab=License-1-ov-file"
+  },
+  "host": "selfdev-api.dev.local:6369",
+  "basePath": "",
+  "schemes": ["https"],
+  "servers": [ {
+    "url": "https://api.hyag.org",
+    "description": "HyperAgency Cloud"
+  }, {
+    "url": "https://selfdev-api.dev.local:6369",
+    "description": "Self-hosted Deployment"
+  } ]
+}`),
+    }
   },
 
   agency: {
