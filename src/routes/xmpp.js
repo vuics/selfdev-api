@@ -4,6 +4,7 @@ import axios from 'axios'
 import { v4 as uuidv4 } from 'uuid'
 import generator from 'generate-password'
 import { customAlphabet } from 'nanoid'
+import { transliterate } from 'transliteration'
 
 import { checkAuth, checkAPIAuth } from '../middleware/check-auth.js'
 import { Verbose } from '../services.js'
@@ -27,7 +28,7 @@ const credentials = async (req, res, next) => {
       verbose('Using existing XMPP credentials for user:', user);
     } else {
       // NOTE: The code below solves the problem of user name uniqueness.
-      const baseUser = (req.user.firstName + req.user.lastName).toLowerCase();
+      const baseUser = transliterate(req.user.firstName + req.user.lastName).toLowerCase();
       user = baseUser;
       for (let i = 0; i < 32; i++) {
         const existingUser = await User.findOne({ 'xmpp.user': user });

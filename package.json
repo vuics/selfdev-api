@@ -55,6 +55,7 @@
     "passport-oauth2-client-password": "^0.1.2",
     "resourcejs": "^2.6.0",
     "response-time": "^2.3.2",
-    "stripe": "^18.2.1"
+    "stripe": "^18.2.1",
+    "transliteration": "^2.3.5"
   }
 }
