@@ -29,6 +29,7 @@ const schema = mongoose.Schema({
 
   settings: {
     language: String,
+    marketing: Boolean,
   },
 
   xmpp: {

@@ -16,7 +16,9 @@ const router = Router()
 const app = router
 app.post('/', async (req, res, next) => {
   // verbose('signup req.body:', req.body)
-  const { email, password, firstName, lastName, phone, country, language } = req.body
+  const {
+    email, password, firstName, lastName, phone, country, language, marketing,
+  } = req.body
 
   let validationError = ''
   if (isEmpty(firstName)) {
@@ -77,6 +79,7 @@ app.post('/', async (req, res, next) => {
       },
       settings: {
         language,
+        marketing,
       },
     })
     console.log('User created:', user.email)
