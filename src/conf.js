@@ -216,7 +216,12 @@ const conf = {
       product: {
         name: 'basic1-product',
       },
-      prices: [{
+      pricesRu: { // Yookassa
+        value: '1.23',
+        currency: 'RUB',
+        interval: 'month',
+      },
+      prices: [{ // Stripe
         lookup_key: 'basic1-fixed-price',  // NOTE: lookup_key should be unique
         unit_amount: 3999,
         currency: 'usd',
@@ -259,7 +264,12 @@ const conf = {
       product: {
         name: 'premium1-product',
       },
-      prices: [{
+      pricesRu: {  // Yookassa
+        value: '2.34',
+        currency: 'RUB',
+        interval: 'month',
+      },
+      prices: [{ // Stripe
         lookup_key: 'premium1-fixed-price',  // NOTE: lookup_key should be unique
         unit_amount: 9699,
         currency: 'usd',

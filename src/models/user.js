@@ -46,6 +46,20 @@ const schema = mongoose.Schema({
   stripe: {
     customerId: String,
   },
+  yookassa: {
+    pending: {
+      plan: String,
+      paymentId: String,
+    },
+
+    plan: String,
+    paymentIds: [String],
+    paymentMethodIds: [String],
+    createdAt: Date,
+    periodStart: Date,
+    periodEnd: Date,
+    active: Boolean,
+  },
 
   limits: {
     // backend limits

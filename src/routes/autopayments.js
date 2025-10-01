@@ -3,12 +3,13 @@ import { inspect } from 'util'
 import { v4 as uuidv4 } from 'uuid'
 import axios from 'axios'
 import lodash from 'lodash'
-const { isEmpty } = lodash
+const { isEmpty, has } = lodash
 
 import conf from '../conf.js'
 import { checkAuth, checkAPIAuth, checkAdmin } from '../middleware/check-auth.js'
 import { Verbose, error } from '../services.js'
 import User from '../models/user.js'
+import { addInterval } from '../utils/datetime.js'
 
 const verbose = Verbose('sd:routes/autopayments'); verbose('')
 const app = Router()
@@ -22,22 +23,6 @@ const auth = Buffer.from(authString).toString("base64")
 //   const ip = forwarded ? forwarded.split(',')[0] : req.connection.remoteAddress;
 //   return ip
 // }
-
-async function getPayment(paymentId) {
-  try {
-    const response = await axios.get(
-      `https://api.yookassa.ru/v3/payments/${paymentId}`,
-      {
-        headers: {
-          "Authorization": `Basic ${auth}`,
-        },
-      }
-    );
-    verbose('getPayment:', response.data);
-  } catch (err) {
-    error(err.response?.data || err.message);
-  }
-}
 
 async function usePaymentMethod(paymentMethodId) {
   try {
@@ -86,17 +71,26 @@ app.post('/subscribe', checkAuth, async (req, res) => {
     verbose('subscribe')
     verbose('authString:', authString)
     verbose('auth:', auth)
+    const { plan } = req.body
+    verbose('plan:', plan)
+
+    const planObj = conf.plans[plan]
+    verbose('planObj:', planObj)
+    if (!planObj || !has(planObj, 'pricesRu')) {
+      throw new Error(`Unknown plan: ${plan}, planObj: ${planObj}`)
+    }
+    verbose('plan prices:', planObj.pricesRu)
 
     const response = await axios.post("https://api.yookassa.ru/v3/payments", {
       amount: {
-        value: "1.23",
-        currency: "RUB",
+        value: planObj.pricesRu.value,
+        currency: planObj.pricesRu.currency,
       },
       confirmation: {
         "type": "embedded"
       },
       capture: true,
-      description: `Test ${uuidv4()}`,
+      description: planObj.product.name,
       save_payment_method: true,
     }, {
       headers: {
@@ -105,7 +99,14 @@ app.post('/subscribe', checkAuth, async (req, res) => {
         "Content-Type": "application/json",
       },
     });
-    verbose('savePaymentMethod:', response.data);
+    verbose('subscribe response.data:', response.data);
+
+    req.user.yookassa.pending = {
+      plan,
+      paymentId: response.data.id,
+    }
+    await req.user.save();
+    verbose('Saved yookassa data to user document:', req.user);
 
     res.json({
       paymentId: response.data.id,
@@ -132,10 +133,33 @@ app.post('/check', checkAuth, async (req, res) => {
     });
     verbose('confirm response.data:', response.data);
 
+    if (paymentId !== req.user.yookassa.pending?.paymentId) {
+      throw new Error(`Current paymentId: ${paymentId} !== pending paymentId: ${req.user.yookassa.pending?.paymentId}`)
+    }
+
+    const planObj = conf.plans[req.user.yookassa.pending.plan]
     const status = response.data.status
     if (status === 'succeeded') {
       verbose('payment succeeded')
+      req.user.yookassa.plan = req.user.yookassa.pending.plan
+      req.user.yookassa.paymentIds.push(paymentId)
+      req.user.yookassa.pending = undefined
+      req.user.yookassa.paymentMethodIds = [...new Set( // deduplicates
+        [...req.user.yookassa.paymentMethodIds, response.data.payment_method.id]
+      )];
+      req.user.yookassa.createdAt = response.data.captured_at
+      req.user.yookassa.periodStart = response.data.captured_at
+      req.user.yookassa.periodEnd = addInterval(
+        new Date(response.data.captured_at),
+        planObj.pricesRu.interval,
+        1
+      )
+      req.user.yookassa.active = true
+    } else {
+      // TODO: what if payment is still pending, or canceled, etc.?
     }
+    await req.user.save();
+    verbose('Updated yookassa data in user document:', req.user);
 
     res.json({
       status,
