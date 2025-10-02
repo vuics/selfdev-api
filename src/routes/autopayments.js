@@ -25,32 +25,32 @@ const auth = Buffer.from(authString).toString("base64")
 //   return ip
 // }
 
-async function usePaymentMethod(paymentMethodId) {
-  try {
-    const response = await axios.post(
-      "https://api.yookassa.ru/v3/payments",
-      {
-        amount: {
-          value: "2.00",
-          currency: "RUB",
-        },
-        capture: true,
-        payment_method_id: paymentMethodId,
-        description: "Заказ №37",
-      },
-      {
-        headers: {
-          "Authorization": `Basic ${auth}`,
-          "Idempotence-Key": uuidv4(),
-          "Content-Type": "application/json",
-        },
-      }
-    );
-    verbose(response.data);
-  } catch (err) {
-    error(err.response?.data || err.message);
-  }
-}
+// async function usePaymentMethod(paymentMethodId) {
+//   try {
+//     const response = await axios.post(
+//       "https://api.yookassa.ru/v3/payments",
+//       {
+//         amount: {
+//           value: "2.00",
+//           currency: "RUB",
+//         },
+//         capture: true,
+//         payment_method_id: paymentMethodId,
+//         description: "Заказ №37",
+//       },
+//       {
+//         headers: {
+//           "Authorization": `Basic ${auth}`,
+//           "Idempotence-Key": uuidv4(),
+//           "Content-Type": "application/json",
+//         },
+//       }
+//     );
+//     verbose(response.data);
+//   } catch (err) {
+//     error(err.response?.data || err.message);
+//   }
+// }
 
 // // Example usage:
 // usePaymentMethod("306dfbd7-000f-5001-8000-1454d25433c1");
@@ -89,6 +89,7 @@ app.post('/subscribe', checkAuth, async (req, res) => {
     verbose('plan prices:', planObj.pricesRu)
 
     const response = await axios.post("https://api.yookassa.ru/v3/payments", {
+      description: planObj.product.name,
       amount: {
         value: planObj.pricesRu.value,
         currency: planObj.pricesRu.currency,
@@ -97,7 +98,6 @@ app.post('/subscribe', checkAuth, async (req, res) => {
         "type": "embedded"
       },
       capture: true,
-      description: planObj.product.name,
       save_payment_method: true,
     }, {
       headers: {
@@ -153,9 +153,9 @@ app.post('/check', checkAuth, async (req, res) => {
       req.user.yookassa.createdAt = response.data.captured_at
       req.user.yookassa.periodStart = response.data.captured_at
       req.user.yookassa.periodEnd = addInterval(
-        new Date(response.data.captured_at),
+        new Date(req.user.yookassa.periodStart),
         planObj.pricesRu.interval,
-        1
+        planObj.pricesRu.number,
       )
       req.user.yookassa.active = true
       req.user.yookassa.canceled = false
