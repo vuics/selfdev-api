@@ -10,6 +10,7 @@ import { checkAuth, checkAPIAuth, checkAdmin } from '../middleware/check-auth.js
 import { Verbose, warn, error } from '../services.js'
 import User from '../models/user.js'
 import { addInterval } from '../utils/datetime.js'
+import { updateUserLimits } from './subscriptions.js'
 
 const verbose = Verbose('sd:routes/autopayments'); verbose('')
 const app = Router()
@@ -17,15 +18,18 @@ const app = Router()
 const authString = `${conf.yookassa.shopId}:${conf.yookassa.apiKey}`
 const auth = Buffer.from(authString).toString("base64")
 
-// FIXME: DRY, it came from subscriptions.js
-//
-// function getCustomerIpAddress ({ req }) {
-//   const forwarded = req.headers['x-forwarded-for'];
-//   const ip = forwarded ? forwarded.split(',')[0] : req.connection.remoteAddress;
-//   return ip
-// }
+export const checkYookassa = (req, res, next) => {
+  if (conf.stripe.enable) {
+    next()
+  } else {
+    res.status(403).json({
+      result: 'error',
+      message: 'The Yookassa integration is disabled'
+    })
+  }
+}
 
-app.get('/', checkAuth, async (req, res) => {
+app.get('/', checkAuth, checkYookassa, async (req, res) => {
   try {
     const {
       plan, createdAt, periodStart, periodEnd, active, canceled, canceledAt
@@ -40,7 +44,7 @@ app.get('/', checkAuth, async (req, res) => {
   }
 });
 
-app.post('/subscribe', checkAuth, async (req, res) => {
+app.post('/subscribe', checkAuth, checkYookassa, async (req, res) => {
   try {
     verbose('subscribe')
     verbose('authString:', authString)
@@ -97,7 +101,74 @@ app.post('/subscribe', checkAuth, async (req, res) => {
   }
 });
 
-app.post('/check', checkAuth, async (req, res) => {
+async function activateYookassaPlan({ user, paymentData, autopayment }) {
+  const planObj = conf.plans[user.yookassa.pending.plan]
+  user.yookassa.plan = user.yookassa.pending.plan
+  user.yookassa.paymentIds.push(paymentData.id)
+  if (autopayment) {
+    user.yookassa.periodStart = user.yookassa.periodEnd
+  } else {
+    user.yookassa.paymentMethodIds.push(paymentData.payment_method.id)
+    user.yookassa.createdAt = paymentData.captured_at
+    user.yookassa.periodStart = paymentData.captured_at
+  }
+  user.yookassa.periodEnd = addInterval(
+    new Date(user.yookassa.periodStart),
+    planObj.pricesRu.interval,
+    planObj.pricesRu.number,
+  )
+  user.yookassa.active = true
+  user.yookassa.canceled = false
+  user.yookassa.canceledAt = undefined
+  user.yookassa.cancelationReason = undefined
+  user.yookassa.pending = undefined
+  await user.save();
+  verbose('Updated yookassa data in user document:', user);
+  await updateUserLimits({ user })
+}
+
+async function cancelYookassaPlan({ user, cancelationReason }) {
+  user.yookassa.active = false
+  user.yookassa.canceled = true
+  const now = new Date();
+  user.yookassa.canceledAt = now
+  user.yookassa.cancelationReason = cancelationReason
+  user.yookassa.pending = undefined
+  await user.save();
+  verbose('Updated yookassa data in user document:', user);
+  await updateUserLimits({ user })
+}
+
+export async function handlePaymentStatus({ user, paymentData, autopayment }) {
+  if (paymentData.status === 'succeeded') {
+    verbose('Payment succeeded')
+    await activateYookassaPlan({ user, paymentData, autopayment })
+  } else if (paymentData.status === 'pending') {
+    verbose('Payment is still pending. Checking pending expiration.')
+    const pendingExpiresAt = addInterval(
+      new Date(user.yookassa.periodEnd),
+      conf.yookassa.pendingExpiration.interval,
+      conf.yookassa.pendingExpiration.number,
+    )
+    const now = new Date();
+    if (now > pendingExpiresAt) {
+      verbose('Pending autopayment is expired.')
+      await cancelYookassaPlan({
+        user,
+        cancelationReason: 'Pending autopayment expired',
+      })
+      // TODO: send email that we have canceled the Yookassa plan
+    }
+  } else {                         // e.g., paymentData.status === 'canceled'
+    warn('payment id:', paymentId, 'has status:', paymentData.status)
+    await cancelYookassaPlan({
+      user,
+      cancelationReason: 'Payment failed',
+    })
+  }
+}
+
+app.post('/check', checkAuth, checkYookassa, async (req, res) => {
   try {
     verbose('check')
     // verbose('authString:', authString)
@@ -110,9 +181,9 @@ app.post('/check', checkAuth, async (req, res) => {
     // }
 
     const { paymentId } = req.user.yookassa.pending
-    if (!paymentId) {
-      throw new Error(`User does not have pending paymentId, pending: ${req.user.yookassa.pending}`)
-    }
+    // if (!paymentId) {
+    //   throw new Error(`User does not have pending paymentId, pending: ${req.user.yookassa.pending}`)
+    // }
     const response = await axios.get(`https://api.yookassa.ru/v3/payments/${paymentId}`, {
       headers: {
         "Authorization": `Basic ${auth}`,
@@ -121,29 +192,35 @@ app.post('/check', checkAuth, async (req, res) => {
       },
     });
     verbose('confirm response.data:', response.data);
+    await handlePaymentStatus({
+      user: req.user,
+      paymentData: response.data,
+      autopayment: false
+    })
 
-    const planObj = conf.plans[req.user.yookassa.pending.plan]
-    if (response.data.status === 'succeeded') {
-      verbose('payment succeeded')
-      req.user.yookassa.plan = req.user.yookassa.pending.plan
-      req.user.yookassa.paymentIds.push(paymentId)
-      req.user.yookassa.paymentMethodIds.push(response.data.payment_method.id)
-      req.user.yookassa.createdAt = response.data.captured_at
-      req.user.yookassa.periodStart = response.data.captured_at
-      req.user.yookassa.periodEnd = addInterval(
-        new Date(req.user.yookassa.periodStart),
-        planObj.pricesRu.interval,
-        planObj.pricesRu.number,
-      )
-      req.user.yookassa.active = true
-      req.user.yookassa.canceled = false
-      req.user.yookassa.canceledAt = undefined
-    } else {
-      warn('payment id:', paymentId, 'has status:', response.data.status)
-    }
-    req.user.yookassa.pending = undefined
-    await req.user.save();
-    verbose('Updated yookassa data in user document:', req.user);
+    // const planObj = conf.plans[req.user.yookassa.pending.plan]
+    // if (response.data.status === 'succeeded') {
+    //   verbose('payment succeeded')
+    //   req.user.yookassa.plan = req.user.yookassa.pending.plan
+    //   req.user.yookassa.paymentIds.push(paymentId)
+    //   req.user.yookassa.paymentMethodIds.push(response.data.payment_method.id)
+    //   req.user.yookassa.createdAt = response.data.captured_at
+    //   req.user.yookassa.periodStart = response.data.captured_at
+    //   req.user.yookassa.periodEnd = addInterval(
+    //     new Date(req.user.yookassa.periodStart),
+    //     planObj.pricesRu.interval,
+    //     planObj.pricesRu.number,
+    //   )
+    //   req.user.yookassa.active = true
+    //   req.user.yookassa.canceled = false
+    //   req.user.yookassa.canceledAt = undefined
+    // } else {
+    //   warn('payment id:', paymentId, 'has status:', response.data.status)
+    // }
+    // req.user.yookassa.pending = undefined
+    // await req.user.save();
+    // verbose('Updated yookassa data in user document:', req.user);
+    // await updateUserLimits({ user: req.user })
 
     const {
       plan, createdAt, periodStart, periodEnd, active, canceled, canceledAt
@@ -160,12 +237,12 @@ app.post('/check', checkAuth, async (req, res) => {
   }
 });
 
-app.delete('/cancel', checkAuth, async (req, res) => {
+app.delete('/cancel', checkAuth, checkYookassa, async (req, res) => {
   try {
-    req.user.yookassa.canceled = true
-    req.user.yookassa.canceledAt = new Date()
-    await req.user.save();
-    verbose('Updated yookassa data in user document:', req.user);
+    await cancelYookassaPlan({
+      user: req.user,
+      cancelationReason: 'Canceled by user',
+    })
 
     const {
       plan, createdAt, periodStart, periodEnd, active, canceled, canceledAt
@@ -237,5 +314,18 @@ app.delete('/cancel', checkAuth, async (req, res) => {
 //   }
 //   res.sendStatus(200);
 // }
+
+// ./subscriptions.js imports it to update user plan.
+export function getUserPlanFromYookassa({ user }) {
+  let plan = null
+  verbose('user.yookassa:', user.yookassa)
+  verbose('conf.yookassa.enable:', conf.yookassa.enable, ', user.yookassa?.active:', user.yookassa?.active)
+  if (conf.yookassa.enable && user.yookassa?.active) {
+    verbose('user.yookassa.plan:', user.yookassa.plan)
+    plan = user.yookassa.plan
+    verbose('plan:', plan)
+  }
+  return plan
+}
 
 export default app

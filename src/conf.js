@@ -177,6 +177,7 @@ const conf = {
   },
 
   stripe: {
+    enable: bool(process.env.STRIPE_ENABLE || 'false'),
     publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '(TBS)',
     secretKey: process.env.STRIPE_SECRET_KEY || '(TBS)',
     webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '(TBS)',
@@ -185,13 +186,19 @@ const conf = {
   },
 
   yookassa: {
+    enable: bool(process.env.YOOKASSA_ENABLE || 'false'),
     shopId: process.env.YOOKASSA_SHOP_ID || '(TBS)',
     apiKey: process.env.YOOKASSA_API_KEY || '(TBS)',
 
     // false -> type: "embedded"
     // true -> type: "redirect"
-    // confirmationRedirect: bool(process.env.YOOKASSA_CONFIRMATION_REDIRECT || false),
-    confirmationRedirect: bool(process.env.YOOKASSA_CONFIRMATION_REDIRECT || true),
+    confirmationRedirect: bool(process.env.YOOKASSA_CONFIRMATION_REDIRECT || false),
+    // confirmationRedirect: bool(process.env.YOOKASSA_CONFIRMATION_REDIRECT || true),
+
+    pendingExpiration: {
+      interval: process.env.YOOKASSA_PENDING_EXPIRATION_INTERVAL || 'day',
+      number: num(process.env.YOOKASSA_PENDING_EXPIRATION_NUMBER || 3),
+    },
   },
 
   limits: {
@@ -402,7 +409,11 @@ export const revealConf = () => {
   delete publicConf.jwt.secret
   delete publicConf.db.url
   delete publicConf.smtp.pass
-  delete publicConf.stripe
+
+  delete publicConf.stripe.publishableKey
+  delete publicConf.stripe.secretKey
+  delete publicConf.stripe.webhookSecret
+  delete publicConf.yookassa.apiKey
 
   delete publicConf.vault.token
   delete publicConf.vault.unsealKeys

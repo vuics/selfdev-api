@@ -1,4 +1,5 @@
 .env
+.env.aaa
 .env.gke
 
 node_modules

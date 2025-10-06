@@ -9,6 +9,7 @@ import { log, warn, error, Verbose } from '../services.js'
 import conf, { revealConf } from '../conf.js'
 import { addInterval } from '../utils/datetime.js'
 import { userI18n } from '../i18n.js'
+import { handlePaymentStatus } from '../routes/autopayments.js'
 
 // Connect to MongoDB through Mongoose driver
 import '../mongo.js'
@@ -17,48 +18,6 @@ import User from '../models/user.js'
 const verbose = Verbose('sd:workers/autopayment'); verbose('')
 
 log('public conf:', inspect(revealConf(), { colors: true, depth: null }))
-
-// In cron syntax, the fields are:
-//
-// ┌───────────── minute (0 - 59)
-// │ ┌─────────── hour (0 - 23)
-// │ │ ┌───────── day of month (1 - 31)
-// │ │ │ ┌─────── month (1 - 12)
-// │ │ │ │ ┌───── day of week (0 - 7) (0 or 7 = Sunday)
-// │ │ │ │ │
-// * * * * *
-
-// // Every minute
-// cron.schedule("* * * * *", () => {
-//   console.log(`[${new Date().toISOString()}] Minute log message`);
-// });
-
-// // Every 5 minutes (0, 5, 10, 15, ... 55)
-// cron.schedule("*/5 * * * *", () => {
-//   console.log(`[${new Date().toISOString()}] Every 5 minutes log message`);
-// });
-
-// // Every hour
-// cron.schedule("0 * * * *", () => {
-//   console.log(`[${new Date().toISOString()}] Hourly log message`);
-// });
-
-// // Every day at 12 am
-// cron.schedule("0 0 * * *", () => {
-//   console.log(`[${new Date().toISOString()}] Daily log message (midnight)`);
-// });
-
-// // On the 1st of every month at 12 am
-// cron.schedule("0 0 1 * *", () => {
-//   console.log(`[${new Date().toISOString()}] Monthly log message (beginning of month)`);
-// });
-
-// // On Jan 1st at 12 am (once a year)
-// cron.schedule("0 0 1 1 *", () => {
-//   console.log(`[${new Date().toISOString()}] Yearly log message (Happy New Year 🎉)`);
-// });
-
-// console.log("Scheduler started. Waiting for jobs...");
 
 const authString = `${conf.yookassa.shopId}:${conf.yookassa.apiKey}`
 const auth = Buffer.from(authString).toString("base64")
@@ -87,13 +46,8 @@ async function renewSubscription({ plan, paymentMethodId }) {
         "Content-Type": "application/json",
       },
     });
-    log('Subscription renewed:', response.data);
-    return {
-      status: response.data.status,
-      paid: response.data.paid,
-      paymentId: response.data.id,
-      confirmationUrl: response.data.confirmation?.confirmation_url,
-    }
+    log('Subscription renew requested:', response.data);
+    return response.data
   } catch (err) {
     error('Error renewing subscription:', err.response?.data || err.message);
   }
@@ -102,15 +56,19 @@ async function renewSubscription({ plan, paymentMethodId }) {
 async function handleExpiredSubscription({ user }) {
   try {
     const paymentMethodId = user.yookassa.paymentMethodIds.at(-1)
-    const { status, paid, paymentId, confirmationUrl } = await renewSubscription({
+    const paymentData = await renewSubscription({
       plan: user.yookassa.plan,
       paymentMethodId,
     })
+    const confirmationUrl = paymentData.confirmation?.confirmation_url
     user.yookassa.pending = {
       plan: user.yookassa.plan,
-      paymentId,
+      paymentId: paymentData.id,
       confirmationUrl,
     }
+    await user.save();
+    verbose('Updated yookassa data in user document:', user);
+    await handlePaymentStatus({ user, paymentData, autopayment: true })
 
     if (confirmationUrl) {
       verbose('Sending autopayment confirmation mail to:', user.email)
@@ -130,39 +88,6 @@ async function handleExpiredSubscription({ user }) {
       })
       log('Autopayment confirmation mail sent:', mail)
     }
-
-    // if (status === 'succeeded') {
-    //   verbose('payment succeeded')
-    //   // user.yookassa.plan = user.yookassa.pending.plan
-    //   user.yookassa.paymentIds.push(paymentId)
-    //   // user.yookassa.paymentMethodIds.push(response.data.payment_method.id)
-    //   // user.yookassa.createdAt = response.data.captured_at
-    //   user.yookassa.periodStart = user.yookassa.periodEnd
-    //   user.yookassa.periodEnd = addInterval(
-    //     new Date(user.yookassa.periodStart),
-    //     planObj.pricesRu.interval,
-    //     planObj.pricesRu.number,
-    //   )
-    //   user.yookassa.active = true
-    //   user.yookassa.canceled = false
-    //   user.yookassa.canceledAt = undefined
-    //   user.yookassa.pending = undefined
-    // } else if (status === 'pending') {
-    //   verbose('payment pending')
-    //   user.yookassa.pending = {
-    //     plan: user.yookassa.plan,
-    //     paymentId,
-    //   }
-    // } else {
-    //   warn('payment id:', paymentId, 'has status:', status, ', paid:', paid)
-    //   user.yookassa.active = false
-    //   user.yookassa.canceled = true
-    //   user.yookassa.canceledAt = now
-    //   user.yookassa.cancelationReason = 'payment failed'
-    //   user.yookassa.pending = undefined
-    // }
-    await user.save();
-    verbose('Updated yookassa data in user document:', user);
   } catch (err) {
     error('Error handling expired subscription:', err)
   }
@@ -179,43 +104,18 @@ async function handlePendingSubscription({ user }) {
         "Content-Type": "application/json",
       },
     });
-    verbose('confirm response.data:', response.data);
-
-    const planObj = conf.plans[user.yookassa.pending.plan]
-    if (response.data.status === 'succeeded') {
-      verbose('payment succeeded')
-      user.yookassa.plan = user.yookassa.pending.plan
-      user.yookassa.paymentIds.push(paymentId)
-      user.yookassa.periodStart = user.yookassa.periodEnd
-      user.yookassa.periodEnd = addInterval(
-        new Date(user.yookassa.periodStart),
-        planObj.pricesRu.interval,
-        planObj.pricesRu.number,
-      )
-      user.yookassa.active = true
-      user.yookassa.canceled = false
-      user.yookassa.canceledAt = undefined
-      user.yookassa.pending = undefined
-      await user.save();
-      verbose('Updated yookassa data in user document:', user);
-    } else if (response.data.status === 'pending') {
-      verbose('payment is still pending')
-    } else {                         // e.g., response.data.stat === 'canceled'
-      warn('payment id:', paymentId, 'has status:', response.data.status)
-      user.yookassa.active = false
-      user.yookassa.canceled = true
-      user.yookassa.canceledAt = now
-      user.yookassa.cancelationReason = response.data.cancelation_details?.reason || 'payment failed'
-      user.yookassa.pending = undefined
-      await user.save();
-      verbose('Updated yookassa data in user document:', user);
-    }
+    verbose('Confirm response.data:', response.data);
+    await handlePaymentStatus({ user, paymentData: response.data, autopayment: true })
   } catch (err) {
     error('Error handling pending subscription:', err)
   }
 }
 
 export default async function autopayment() {
+  if (!conf.yookassa.enable) {
+    return error('The Yookassa integration is disabled. Skipping autopayments.')
+  }
+
   log('Start looking for users with expired subscription')
   try {
     const users = await User.find({

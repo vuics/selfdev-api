@@ -8,6 +8,7 @@ import conf from '../conf.js'
 import { checkAuth, checkAPIAuth, checkAdmin } from '../middleware/check-auth.js'
 import { Verbose, error } from '../services.js'
 import User from '../models/user.js'
+import { getUserPlanFromYookassa } from './autopayments.js'
 
 const verbose = Verbose('sd:routes/subscriptions'); verbose('')
 const app = Router()
@@ -28,7 +29,18 @@ const stripe = Stripe(conf.stripe.secretKey, {
   }
 })
 
-app.get('/admin-init', checkAuth, checkAdmin, async (req, res) => {
+export const checkStripe = (req, res, next) => {
+  if (conf.stripe.enable) {
+    next()
+  } else {
+    res.status(403).json({
+      result: 'error',
+      message: 'The Stripe integration is disabled'
+    })
+  }
+}
+
+app.get('/admin-init', checkAuth, checkAdmin, checkStripe, async (req, res) => {
   try {
     const products = await stripe.products.list({
       active: true,
@@ -126,7 +138,7 @@ app.get('/admin-init', checkAuth, checkAdmin, async (req, res) => {
   }
 });
 
-app.get('/config', checkAuth, async (req, res) => {
+app.get('/config', checkAuth, checkStripe, async (req, res) => {
   try {
     res.send({
       publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
@@ -136,7 +148,7 @@ app.get('/config', checkAuth, async (req, res) => {
   }
 });
 
-app.get('/', checkAuth, async (req, res) => {
+app.get('/', checkAuth, checkStripe, async (req, res) => {
   let subscriptions = []
   if (req.user.stripe.customerId) {
     subscriptions = await stripe.subscriptions.list({
@@ -225,7 +237,7 @@ async function updateCustomer ({ req }) {
   }
 }
 
-app.post('/create', checkAuth, async (req, res) => {
+app.post('/create', checkAuth, checkStripe, async (req, res) => {
   verbose('create subscription body:', req.body)
 
   try {
@@ -276,7 +288,7 @@ app.post('/create', checkAuth, async (req, res) => {
   }
 });
 
-app.post('/cancel', checkAuth, async (req, res) => {
+app.post('/cancel', checkAuth, checkStripe, async (req, res) => {
   try {
     verbose('cancel-subscription req.body:', req.body)
     const { subscriptionId } = req.body
@@ -293,7 +305,7 @@ app.post('/cancel', checkAuth, async (req, res) => {
   }
 });
 
-app.post('/promotion', checkAuth, async (req, res) => {
+app.post('/promotion', checkAuth, checkStripe, async (req, res) => {
   try {
     verbose('promotion req.body:', req.body)
     const { subscriptionId, promotionCode } = req.body
@@ -332,7 +344,7 @@ app.post('/promotion', checkAuth, async (req, res) => {
 
 // NOTE: unused
 //
-app.post('/invoice/preview', checkAuth, async (req, res) => {
+app.post('/invoice/preview', checkAuth, checkStripe, async (req, res) => {
   verbose('req.body:', req.body)
   verbose('req.user:', req.user)
   verbose('req.user.stripe.customerId:', req.user.stripe.customerId)
@@ -457,6 +469,31 @@ export async function subscriptionsWebhook (req, res) {
   res.sendStatus(200);
 }
 
+export async function getUserPlanFromStripe({ user }) {
+  try {
+    let plan = null
+    verbose('conf.stripe.enable:', conf.stripe.enable, ', user.stripe?.customerId:', user.stripe?.customerId)
+    if (conf.stripe.enable && user.stripe?.customerId) {
+      const subscriptions = await stripe.subscriptions.list({
+        customer: user.stripe.customerId,
+        status: 'active',
+      });
+      verbose('subscriptions:', inspect(subscriptions, { depth: null, colors: true }))
+      // TODO: what to do with other active subscriptions in case there are multiple?
+      const subscription = subscriptions.data[0]
+      if (subscription) {
+        verbose('first subscription:', inspect(subscription, { depth: null, colors: true }))
+        plan = subscription?.metadata.plan
+      }
+    }
+    verbose('plan:', plan)
+    return plan
+  } catch (err) {
+    error('Error getting user plan from stripe:', err)
+    throw err
+  }
+}
+
 export async function updateUserLimits ({ user }) {
   try {
     verbose('updateUserLimits user.limits (before):', user.limits, ', limits enabled:', conf.limits.enable)
@@ -467,36 +504,22 @@ export async function updateUserLimits ({ user }) {
       }
       verbose('user.limits (after):', user.limits)
     } else {
-      if (!user.stripe?.customerId) {
-        // verbose('updateUserLimits plans.free.limits:', conf.plans.free.limits)
-        user.limits = conf.plans.free.limits;
+      let plan = null
+      plan = await getUserPlanFromStripe({ user })
+      verbose('plan from stripe:', plan)
+      if (!plan) {
+        plan = getUserPlanFromYookassa({ user })
+        verbose('plan from yookassa:', plan)
+      }
+      if (!plan) {
+        plan = 'free'
+      }
+      verbose('plan:', plan)
+      if (plan && conf.plans[plan]) {
+        user.limits = conf.plans[plan].limits;
       } else {
-        if (user.stripe.customerId) {
-          const subscriptions = await stripe.subscriptions.list({
-            customer: user.stripe.customerId,
-            status: 'active',
-            // expand: ['data.default_payment_method'],
-          });
-          verbose('subscriptions:', inspect(subscriptions, { depth: null, colors: true }))
-
-          // TODO: what to do with other active subscriptions in case there are multiple?
-
-          const subscription = subscriptions.data[0]
-          if (!subscription) {
-            user.limits = conf.plans.free.limits;
-          }
-          verbose('first subscription:', inspect(subscription, { depth: null, colors: true }))
-
-          // Set user account limits
-          const { plan } = subscription?.metadata
-          verbose('plan:', plan)
-          if (plan && conf.plans[plan]) {
-            user.limits = conf.plans[plan].limits;
-          } else {
-            console.error('Unknown plan:', plan, '. Switching to free limits.');
-            user.limits = conf.plans.free.limits;
-          }
-        }
+        console.error('Unknown plan:', plan, '. Switching to free limits.');
+        user.limits = conf.plans.free.limits;
       }
     }
     await user.save()
@@ -506,6 +529,56 @@ export async function updateUserLimits ({ user }) {
     throw err
   }
 }
+
+// export async function updateUserLimits ({ user }) {
+//   try {
+//     verbose('updateUserLimits user.limits (before):', user.limits, ', limits enabled:', conf.limits.enable)
+//     if (!conf.limits.enable) {
+//       verbose('user.limits (before):', user.limits)
+//       if (user.limits) {
+//         user.set('limits', undefined);
+//       }
+//       verbose('user.limits (after):', user.limits)
+//     } else {
+//       if (!user.stripe?.customerId) {
+//         // verbose('updateUserLimits plans.free.limits:', conf.plans.free.limits)
+//         user.limits = conf.plans.free.limits;
+//       } else {
+//         if (user.stripe.customerId) {
+//           const subscriptions = await stripe.subscriptions.list({
+//             customer: user.stripe.customerId,
+//             status: 'active',
+//             // expand: ['data.default_payment_method'],
+//           });
+//           verbose('subscriptions:', inspect(subscriptions, { depth: null, colors: true }))
+
+//           // TODO: what to do with other active subscriptions in case there are multiple?
+
+//           const subscription = subscriptions.data[0]
+//           if (!subscription) {
+//             user.limits = conf.plans.free.limits;
+//           }
+//           verbose('first subscription:', inspect(subscription, { depth: null, colors: true }))
+
+//           // Set user account limits
+//           const { plan } = subscription?.metadata
+//           verbose('plan:', plan)
+//           if (plan && conf.plans[plan]) {
+//             user.limits = conf.plans[plan].limits;
+//           } else {
+//             console.error('Unknown plan:', plan, '. Switching to free limits.');
+//             user.limits = conf.plans.free.limits;
+//           }
+//         }
+//       }
+//     }
+//     await user.save()
+//     verbose('updateUserLimits user.limits (after):', user.limits)
+//   } catch (err) {
+//     error('Error updating user limits:', err)
+//     throw err
+//   }
+// }
 
 ///////////////////////////////////////////////////////////////////////////////
 // Meter events
