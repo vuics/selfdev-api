@@ -395,6 +395,15 @@ const conf = {
     host: process.env.XMPP_HOST || 'localhost',
     commanderUrl: process.env.XMPP_COMMANDER_URL || 'http://localhost:8387',
   },
+
+  // only for selfdev-apiworkers
+  scheduler: {
+    enable: (process.env.SCHEDULER_ENABLE || false),
+    autopayment: {
+      enable: (process.env.SCHEDULER_AUTOPAYMENT_ENABLE || true),
+      cron: process.env.SCHEDULER_AUTOPAYMENT_CRON || "0 * * * *", // "*/1 * * * *",
+    }
+  }
 }
 
 export default conf
