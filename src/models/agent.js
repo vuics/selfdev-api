@@ -187,6 +187,14 @@ export default mongoose.model(
         promptKey: String,
       },
 
+      n8n: {
+        method: String,
+        url: String,
+        payload: Mixed,
+        parseJson: Boolean,
+        promptKey: String,
+      },
+
       notebook: {
         filePath: String,
         kernelName: String,
