@@ -393,7 +393,12 @@ const conf = {
 
   xmpp: {
     host: process.env.XMPP_HOST || 'localhost',
+    websocketUrl: process.env.XMPP_WEBSOCKET_URL || 'wss://localhost:5281/xmpp-websocket',
     commanderUrl: process.env.XMPP_COMMANDER_URL || 'http://localhost:8387',
+
+    mucHost: process.env.XMPP_MUC_HOST || 'conference.localhost',
+    shareHost: process.env.XMPP_SHARE_HOST || 'share.localhost',
+    shareUrlPrefix: process.env.SHARE_URL_PREFIX || 'https://selfdev-prosody.dev.local:5281/file_share/',
   },
 
   // only for selfdev-apiworkers

@@ -5,16 +5,78 @@ import { Verbose, log, warn, error } from '../services.js'
 import Map from '../models/map.js'
 import { nanoid } from 'nanoid'
 import { sleep } from '../utils/helper.js'
+import conf from '../conf.js'
 
-// import { } from '../mapper.js'
+import {
+  initXmppClient,
+  playMapCore,
+} from '../mapper.js'
 
 const verbose = Verbose('sd:routes/executor'); verbose('')
 const app = Router()
 
-async function executeMap({ map }) {
+function useState(initialValue) {
+  let state = initialValue;
+  function getState() {
+    return state;
+  }
+  function setState(newValue) {
+    state = newValue;
+    return state;
+  }
+  return [getState, setState];
+}
+
+function useRef(initialValue) {
+  return { current: initialValue };
+}
+
+async function executeMap({ map, user }) {
   try {
     log('Executing map:', map.title, ', mapId:', map._id)
     await sleep(10)
+
+    const getNodes = () => map.nodes;
+    const getEdges = () => map.edges;
+    const setNodes = (updater) => map.nodes = updater(map.nodes);
+    const setEdges = (updater) => map.edges = updater(map.edges);
+
+    const [ loading, setLoading ] = useState(true)
+    const [ responseError, setResponseError ] = useState('')
+    const [ credentials, setCredentials ] = useState({
+      user: user.xmpp.user,
+      password: user.xmpp.password,
+      jid: `${user.xmpp.user}@${conf.xmpp.host}`,
+    })
+    const [ roster, setRoster ] = useState([])
+    const [ presence, setPresence ] = useState({});
+    const xmppRef = useRef(null);
+
+    const [ playing, setPlaying ] = useState(false)
+    const [ stepping, setStepping ] = useState(false)
+    const [ pausing, setPausing ] = useState(false)
+    const playingRef = useRef(playing)
+    const steppingRef = useRef(stepping)
+    const pausingRef = useRef(pausing)
+    playingRef.current = playing
+    steppingRef.current = stepping
+    pausingRef.current = pausing
+
+    xmppRef.current = initXmppClient({
+      credentials,
+      service: conf.xmpp.websocketUrl,
+      domain: conf.xmpp.host,
+      shareUrlPrefix: conf.xmpp.shareUrlPrefix,
+      setLoading, setResponseError, setRoster, setPresence,
+      getNodes, setNodes,
+    })
+
+    await playMapCore({
+      step: false, credentials,
+      setPlaying, setPausing, setStepping, setReordering,
+      playingRef, pausingRef, steppingRef,
+      getNodes, getEdges, setNodes, setEdges,
+    })
 
     map.executing = false
     map.completed = true
@@ -53,7 +115,7 @@ app.post('/map/:mapId', checkAuth, async (req, res) => {
     await resultMap.save();
     res.json(resultMap);
 
-    executeMap({ map: resultMap })
+    executeMap({ map: resultMap, user: req.user })
   } catch (err) {
     error('Error running mapper:', err)
     throw err
