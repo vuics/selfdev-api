@@ -17,6 +17,15 @@ export default mongoose.model(
 
     title: String,
     flow: Mixed,
+
+    // execution fields
+    templateMapId: {
+      type: ObjectId,
+      required: false,
+      ref: 'Map'
+    },
+    executing: Boolean,
+    completed: Boolean,
   })
     .plugin(mongooseTimestamp)
 )

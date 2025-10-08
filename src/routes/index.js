@@ -19,6 +19,7 @@ import xmpp from './xmpp.js'
 import vault from './vault.js'
 import profile from './profile.js'
 import settings from './settings.js'
+import executor from './executor.js'
 
 const verbose = Verbose('sd:routes/index'); verbose('')
 
@@ -42,5 +43,6 @@ router.use('/v1/xmpp', xmpp)
 router.use('/v1/vault', vault)
 router.use('/v1/profile', profile)
 router.use('/v1/settings', settings)
+router.use('/v1/executor', executor)
 
 export default router
