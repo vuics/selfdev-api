@@ -51,7 +51,7 @@ async function executeMap({ map, user }) {
     const xmppRef = useRef(null);
 
     const [ reordering, setReordering ] = useState(false)
-    const [ playing, setPlaying ] = useState(false)
+    const [ playing, setPlaying ] = useState(true)  // NOTE: play it immediatelly
     const [ stepping, setStepping ] = useState(false)
     const [ pausing, setPausing ] = useState(false)
     const playingRef = useRef(playing)
@@ -63,7 +63,7 @@ async function executeMap({ map, user }) {
 
     // verbose('credentials:', credentials)
     log('Init xmpp client')
-    xmppRef.current = initXmppClient({
+    xmppRef.current = await initXmppClient({
       credentials,
       service: conf.xmpp.websocketUrl,
       domain: conf.xmpp.host,
@@ -83,6 +83,7 @@ async function executeMap({ map, user }) {
     log('Done playing map core. Saving results.')
     map.executing = false
     map.completed = true
+    map.markModified('flow')
     await map.save();
     log('Done executing map:', map.title, ', mapId:', map._id)
   } catch (err) {
@@ -118,7 +119,7 @@ app.post('/map/:mapId', checkAuth, async (req, res) => {
     await resultMap.save();
     res.json(resultMap);
 
-    executeMap({ map: resultMap, user: req.user })
+    await executeMap({ map: resultMap, user: req.user })
   } catch (err) {
     error('Error running mapper:', err)
     throw err

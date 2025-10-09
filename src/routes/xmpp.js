@@ -89,7 +89,7 @@ const credentials = async (req, res, next) => {
       password: password,
       user: user
     }
-    verbose('out:', out)
+    // verbose('out:', out)
     res.json(out)
   } catch (err) {
     res.status(500).json({ result: 'error', message: err.toString()})

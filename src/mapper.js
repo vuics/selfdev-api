@@ -82,7 +82,7 @@ export function checkCondition({ condition, text }) {
       satisfied = safeRegex.test(text)
     }
   }
-  console.log('condition:', condition, ', satisfied:', satisfied, ', safe:', safe)
+  // console.log('condition:', condition, ', satisfied:', satisfied, ', safe:', safe)
   return [ satisfied, safe ]
 }
 
@@ -99,6 +99,8 @@ export async function playEdge ({
   const [ satisfied, safe ] = checkCondition({ condition, text: smartText })
   // console.log('condition:', condition, ', satisfied:', satisfied, ', safe:', safe)
 
+  // console.log('playEdge smartText:', smartText, ', satisfied:', satisfied, ', safe:', safe)
+  // console.log('assign waitRecipient:', (smartText && satisfied) ? recipient : undefined)
   setNodes((nodes) =>
     nodes.map((node) =>
       node.id === targetId ? {
@@ -164,94 +166,77 @@ export function unlinkEdge({ edge, getNodes, setNodes }) {
   )
 }
 
-// ui
-export function startEditing({ id, data, setNodes }) {
-  console.log('startEditing')
-  if (!data.editing) {
-    console.log('startEditing: update nodes')
-    setNodes((nodes) =>
-      nodes.map((node) =>
-        node.id === id ? { ...node, data: { ...node.data, editing: !data.editing } } : node
-    ))
-  }
-}
-
-// ui
-export function switchEditing({ id, data, setNodes }) {
-  console.log('switchEditing')
-  setNodes((nodes) =>
-    nodes.map((node) =>
-      node.id === id ? { ...node, data: { ...node.data, editing: !data.editing } } : node
-    )
-  );
-}
-
 const xmppRef = {
   current: null
 }
 
-export function initXmppClient({
+export async function initXmppClient({
   credentials, service, domain, shareUrlPrefix,
   setLoading, setResponseError, setRoster, setPresence,
   getNodes, setNodes,
 }) {
-    if (xmppRef.current) {
-      console.warn('xmpp was already set')
-      return xmppRef.current
-    }
-    if (!credentials || !credentials.user || !credentials.password || !credentials.jid) {
-      return console.error("No credentials error")
-    }
+  if (xmppRef.current) {
+    console.warn('XMPP was already initialized');
+    return xmppRef.current;
+  }
 
-    // FIXME: fix the certificate
-    const isNode = typeof process !== 'undefined' &&
-                   process.release &&
-                   process.release.name === 'node';
-    if (isNode) {
-      process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-    }
+  if (!credentials || !credentials.user || !credentials.password || !credentials.jid) {
+    console.error("No credentials error");
+    return null;
+  }
 
-    // Initialize XMPP client
-    const xmpp = client({
-      service,
-      domain,
-      username: credentials.user,
-      password: credentials.password,
-      tls: {
-        rejectUnauthorized: false
-      }
-    });
-    xmppRef.current = xmpp;
-    // console.log('initXmppClient assign xmppRef.current=', xmppRef.current)
+  // Allow self-signed certs in Node
+  const isNode = typeof process !== 'undefined' &&
+                 process.release &&
+                 process.release.name === 'node';
+  if (isNode) {
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+  }
 
-    // Handle online event
+  // Initialize XMPP client
+  const xmpp = client({
+    service,
+    domain,
+    username: credentials.user,
+    password: credentials.password,
+    tls: { rejectUnauthorized: false },
+  });
+  xmppRef.current = xmpp;
+  // console.log('initXmppClient assign xmppRef.current=', xmppRef.current)
+
+  // ✅ Wrap connection in a Promise to await readiness
+  const ready = new Promise((resolve, reject) => {
     xmpp.on('online', async (jid) => {
       console.log(`Connected as ${jid.toString()}`);
 
-      // Get roster (contact list)
-      await xmpp.send(xml('iq', { type: 'get', id: 'roster_1' },
-        xml('query', { xmlns: 'jabber:iq:roster' })
-      ));
-      console.log('Requested roster');
+      try {
+        // Request roster
+        await xmpp.send(xml('iq', { type: 'get', id: 'roster_1' },
+          xml('query', { xmlns: 'jabber:iq:roster' })
+        ));
+        console.log('Requested roster');
 
-      // Send initial presence to let the server know we're online
-      xmpp.send(xml('presence'));
-      console.log('Sent initial presence');
+        // Send initial presence
+        await xmpp.send(xml('presence'));
+        console.log('Sent initial presence');
 
-      setLoading(false)
+        setLoading(false);
+        resolve(xmpp); // ✅ resolve once connected and ready
+      } catch (err) {
+        reject(err);
+      }
     });
 
-    // Handle errors
     xmpp.on('error', (err) => {
-      setLoading(false)
       console.error('XMPP error:', err);
-      setResponseError(`XMPP error: ${err}`)
+      setLoading(false);
+      setResponseError(`XMPP error: ${err}`);
+      reject(err);
     });
 
-    // Handle disconnection
     xmpp.on('close', () => {
-      setLoading(false)
       console.log('Connection closed');
+      setLoading(false);
     });
 
     // Handle incoming stanzas
@@ -259,27 +244,25 @@ export function initXmppClient({
       // console.log('Got stanza:', stanza.toString());
 
       if (stanza.is('iq') && stanza.attrs.type === 'result') {
+        // Handle roster
         const query = stanza.getChild('query', 'jabber:iq:roster');
         if (query) {
           const items = query.getChildren('item');
           if (items && items.length) {
-            const updatedRoster = items.map(({ attrs }) => {
-              return {
-                jid: attrs.jid.split('/')[0],
-                name: attrs.name,
-              };
-            });
+            const updatedRoster = items.map(({ attrs }) => ({
+              jid: attrs.jid.split('/')[0],
+              name: attrs.name,
+            }));
             setRoster(updatedRoster);
           }
         }
       } else if (stanza.is('presence')) {
+         // Handle presence
         const from = stanza.attrs.from;
         const type = stanza.attrs.type;
         const jid = from.split('/')[0];
 
-        setPresence(prev => {
-          return { ...prev, [jid]: type !== 'unavailable' };
-        });
+        setPresence(prev => ({ ...prev, [jid]: type !== 'unavailable' }));
       }
 
       // Skip non-message stanzas
@@ -293,54 +276,61 @@ export function initXmppClient({
 
       if (type === 'chat' || type === 'normal' || !type) {
         console.log(`Personal message response from ${from}: ${body}`);
-        const [updateNode] = getNodes().filter(nd => nd.type === 'NoteNode' && nd.data.waitRecipient === from.split('/')[0])
+        const [updateNode] = getNodes().filter(nd =>
+          nd.type === 'NoteNode' && nd.data.waitRecipient === from.split('/')[0]
+        );
         if (updateNode) {
           const shareUrlRegex = new RegExp(
             "^" + shareUrlPrefix.replace(/[-\\^$*+?.()|[\]{}]/g, "\\$&")
           );
           if (shareUrlRegex.test(body)) {
-            setNodes((nodes) =>
-              nodes.map((node) =>
-                node.id === updateNode.id ? {
-                  ...node,
-                  data: {
-                    ...node.data,
-                    attachments: [...(node.data.attachments || []), body]
-                  },
-                } : node
+            setNodes(nodes =>
+              nodes.map(node =>
+                node.id === updateNode.id
+                  ? {
+                      ...node,
+                      data: {
+                        ...node.data,
+                        attachments: [...(node.data.attachments || []), body],
+                      },
+                    }
+                  : node
               )
             );
           } else {
-            setNodes((nodes) =>
-              nodes.map((node) =>
-                node.id === updateNode.id ? {
-                  ...node,
-                  data: { ...node.data, text: body, waitRecipient: undefined, },
-                  // Make the proper sizing. Allow dynamic change of heigth.
-                  width: 600,
-                  height: undefined,
-                } : node
+            setNodes(nodes =>
+              nodes.map(node =>
+                node.id === updateNode.id
+                  ? {
+                      ...node,
+                      data: { ...node.data, text: body, waitRecipient: undefined },
+                      width: 600,
+                      height: undefined,
+                    }
+                  : node
               )
             );
           }
         }
       } else if (type === 'groupchat') {
-        // Skip our own messages
-        if (from.includes(`/${credentials.user}`)) return;
-
-        // Skip historical messages
+        if (from.includes(`/${credentials.user}`)) return; // Skip self
         const delay = stanza.getChild('delay');
-        if (delay) return;
-
+        if (delay) return; // Skip history
         console.log(`Group chat message from ${from}: ${body}`);
       }
     });
+  });
 
-  xmpp.start().catch(console.error);
-  return xmppRef.current
+  await xmpp.start().catch((err) => {
+    console.error('Failed to start XMPP:', err);
+    throw err;
+  });
+
+  return ready; // resolves when "online" event fires
 }
 
 export async function sendPersonalMessage ({ credentials, recipient, prompt }) {
+  console.log("sendPersonalMessage to:", recipient, ', prompt:', prompt)
   if (!recipient || !prompt || !credentials) {
     return console.error('Error sending personal message to recipient:', recipient, ', prompt:', prompt)
   }
@@ -478,7 +468,7 @@ export async function playMapCore ({
   playingRef, pausingRef, steppingRef,
   getNodes, getEdges, setNodes, setEdges,
 } = {}) {
-  console.log('playMap')
+  // console.log('playMapCore')
   setPlaying(true)
   if (!step) {
     setPausing(false)
@@ -487,7 +477,7 @@ export async function playMapCore ({
 
   const groupNodes = getNodes().filter(nd => nd.type === 'group')
   const groupElements = []
-  console.log('groupNodes:', groupNodes)
+  // console.log('groupNodes:', groupNodes)
   for (let groupNode of groupNodes) {
     const parentId = groupNode.id
     const childNodeIds = getNodes().filter(nd => nd.parentId === groupNode.id).map(nd => nd.id)
@@ -505,7 +495,7 @@ export async function playMapCore ({
       loopEdgeIds: getEdges().filter(ed => childNodeIds.includes(ed.source)).map(ed => ed.id),
     })
   }
-  console.log('groupElements:', groupElements)
+  // console.log('groupElements:', groupElements)
 
   let sequence = 1
   setEdges((edges) =>
@@ -526,6 +516,7 @@ export async function playMapCore ({
   let loop = Object.assign({}, inactiveLoop)
   let edgeIndex = 0;
   while(edgeIndex < edges.length) {
+    // console.log('process edgeIndex:', edgeIndex)
     const edge = edges[edgeIndex]
     await sleep(100)  // NOTE: this sleep is needed in case the variable just got updated the note which is source of this calcualted
 
@@ -538,13 +529,16 @@ export async function playMapCore ({
     // console.log('sourceNode:', sourceNode)
     // console.log('targetNode:', targetNode)
 
+    console.log('Start playEdge sourceNodeData:', sourceNode.data, ', edgeData:', edge.data)
     await playEdge({
       sourceNodeData: sourceNode.data, edgeData: edge.data,
       getNodes, setNodes, getEdges, setEdges,
       credentials, sendPersonalMessage, sendAttachments,
       edgeId: edge.id, targetId: edge.target,
     })
+    // console.log('Done playEdge sourceNodeData')
 
+    // console.log('while playingRef')
     while (playingRef.current) {
       await sleep(1000)
       const nodes1 = getNodes()
@@ -555,7 +549,7 @@ export async function playMapCore ({
       if (!targetNode1) {
         break
       }
-      // console.log('targetNode1.data.waitRecipient:', targetNode1.data.waitRecipient)
+      console.log('targetNode1.data.waitRecipient:', targetNode1.data.waitRecipient)
       if (targetNode1.data.waitRecipient === undefined) {
         setEdges((edges1) =>
           edges1.map((edge1) =>
@@ -565,7 +559,9 @@ export async function playMapCore ({
         break
       }
     }
+    // console.log('After response getNodes():', getNodes())
 
+    // console.log('if not loop.active')
     if (!loop.active) {
       for (const groupElement of groupElements) {
         if (groupElement.innerEdgeIds.includes(edge.id)) {
@@ -579,13 +575,14 @@ export async function playMapCore ({
       }
     }
 
+    // console.log('if loop.active')
     let edgeIndexUpdated = false
     if (loop.active) {
       loop.remainingEdgeIds = loop.remainingEdgeIds.filter(eid => eid !== edge.id)
-      console.log('loop.remainingEdgeIds:', loop.remainingEdgeIds)
+      // console.log('loop.remainingEdgeIds:', loop.remainingEdgeIds)
       if (loop.remainingEdgeIds.length === 0) {
         const exitEdgesSatisfied = getEdges().filter(eg => loop.groupElement.exitEdgeIds.includes(eg.id)).map(eg => eg.data.satisfied)
-        console.log('exitEdgesSatisfied:', exitEdgesSatisfied)
+        // console.log('exitEdgesSatisfied:', exitEdgesSatisfied)
         let exitLoop = false
         if (loop.groupElement.and) {
           if (!exitEdgesSatisfied.includes(false)) {
@@ -600,10 +597,10 @@ export async function playMapCore ({
         }
 
         if (exitLoop) {
-          console.log('exit loop')
+          // console.log('exit loop')
           loop = Object.assign({}, inactiveLoop)
         } else{
-          console.log('restart loop')
+          // console.log('restart loop')
           edgeIndex = loop.fromEdgeIndex
           edgeIndexUpdated = true
           loop.remainingEdgeIds = loop.groupElement.loopEdgeIds
@@ -630,10 +627,13 @@ export async function playMapCore ({
       pausingRef.current = true
     }
 
+    // console.log("playingRef.current:", playingRef.current)
     if (!playingRef.current) {
+      // console.log("Break cause !playingRef.current")
       break
     }
     while (pausingRef.current) {
+      // console.log('sleep 1000')
       await sleep(1000)
     }
   }
@@ -641,5 +641,6 @@ export async function playMapCore ({
   setPlaying(false)
   setStepping(false)
   setPausing(false)
+  // console.log('done playMapCore')
 }
 
