@@ -396,9 +396,11 @@ export class XmppClient {
     this.client = null
     this.emitter = null
     this.credentials = null
+    this.roster = []
+    this.presence = {}
   }
 
-  async connect({ credentials, service, domain, setRoster, setPresence }) {
+  async connect({ credentials, service, domain }) {
     if (this.xmpp) {
       console.warn('XMPP was already initialized');
       return this.xmpp;
@@ -475,13 +477,11 @@ export class XmppClient {
             // console.log('recieved roster query:', query)
             const items = query.getChildren('item');
             if (items && items.length) {
-              const updatedRoster = items.map(({ attrs }) => ({
+              this.roster = items.map(({ attrs }) => ({
                 jid: attrs.jid.split('/')[0],
                 name: attrs.name,
               }));
-              if (setRoster) {
-                setRoster(updatedRoster);
-              }
+              this.emitter.emit('roster', this.roster)
             }
           }
         } else if (stanza.is('presence')) {
@@ -489,10 +489,11 @@ export class XmppClient {
           const from = stanza.attrs.from;
           const type = stanza.attrs.type;
           const jid = from.split('/')[0];
-
-          if (setPresence) {
-            setPresence(prev => ({ ...prev, [jid]: type !== 'unavailable' }));
+          this.presence = {
+            ...this.presence,
+            [jid]: type !== 'unavailable'
           }
+          this.emitter.emit('presence', this.presence)
         }
 
         // Skip non-message stanzas
