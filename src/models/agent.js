@@ -211,7 +211,19 @@ export default mongoose.model(
           //   valueFromVault: String,
           // },
         },
-      }
+      },
+
+      maptrix: {
+        mapId: {
+          type: ObjectId,
+          required: false,
+          ref: 'Map'
+        },
+        input: Mixed,
+        output: [String],
+        parseJson: Boolean,
+        promptKey: String,
+      },
     },
   })
     .plugin(mongooseTimestamp)

@@ -10,6 +10,7 @@
     "listen": "stripe listen --skip-verify --forward-to https://selfdev-api.dev.local:6369/v1/subscriptions/webhook",
     "workers:scheduler": "NODE_ENV=development DEBUG=sd:* nodemon --exec node -- ./src/workers/scheduler.js",
     "workers:autopayment": "NODE_ENV=production DEBUG=sd:* node ./src/workers/autopayment.js",
+    "swarm": "NODE_ENV=development DEBUG=sd:* nodemon --exec node -- ./src/swarm/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [

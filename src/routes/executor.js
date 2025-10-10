@@ -47,6 +47,11 @@ async function executeMap({ map, user }) {
     })
     console.log('XMPP initialized');
 
+    const getNodes = () => map.flow.nodes;
+    const getEdges = () => map.flow.edges;
+    const setNodes = (updater) => map.flow.nodes = updater(map.flow.nodes);
+    const setEdges = (updater) => map.flow.edges = updater(map.flow.edges);
+
     const onChatMessage = createOnChatMessage({
       getNodes, setNodes, shareUrlPrefix: conf.xmpp.shareUrlPrefix,
     });
@@ -56,10 +61,6 @@ async function executeMap({ map, user }) {
     })
 
 
-    const getNodes = () => map.flow.nodes;
-    const getEdges = () => map.flow.edges;
-    const setNodes = (updater) => map.flow.nodes = updater(map.flow.nodes);
-    const setEdges = (updater) => map.flow.edges = updater(map.flow.edges);
     const [ reordering, setReordering ] = useState(false)
     const [ playing, setPlaying ] = useState(true)  // NOTE: play it immediatelly
     const [ stepping, setStepping ] = useState(false)
