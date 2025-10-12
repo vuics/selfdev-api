@@ -452,13 +452,6 @@ export class XmppClient {
             for (const joinRoom of joinRooms) {
               const roomJid = `${joinRoom}@${mucHost}`
               await this.joinRoom({ roomJid })
-              // const mucPresence = xml(
-              //   'presence',
-              //   { to: `${roomJid}/${this.credentials.user}` },
-              //   xml('x', { xmlns: 'http://jabber.org/protocol/muc' })
-              // );
-              // await this.xmpp.send(mucPresence);
-              // console.log(`Joined room ${roomJid} as ${this.credentials.user}`);
             }
           }
 
@@ -524,15 +517,32 @@ export class XmppClient {
 
         if (type === 'chat' || type === 'normal' || !type) {
           console.log(`Personal message response from ${from}: ${body}`);
-          this.emitter.emit('chatMessage', { from, type, body})
+          this.emitter.emit('chatMessage', { from, type, body })
         } else if (type === 'groupchat') {
           // Skip our own messages
           if (from.includes(`/${this.credentials.user}`)) return; // Skip self
           // Skip historical messages
           const delay = stanza.getChild('delay');
           if (delay) { return; }
+
+          let mentioned = false
+          // Detect <reference type="mention" xmlns="urn:xmpp:reference:0"/>
+          const refs = stanza.getChildren('reference', 'urn:xmpp:reference:0')
+          for (const ref of refs) {
+            const type = ref.attrs.type
+            const uri = ref.attrs.uri
+            if (type === 'mention' && uri && uri.endsWith(`/${this.credentials.user}`)) {
+              console.log(`🔔 Mention detected via reference: ${uri}`)
+              mentioned = true
+            }
+          }
+          if (!mentioned || !body.includes(`${this.credentials.user}`)) {
+            console.log(`Mention is not detected via nickname ${this.credentials.user}`)
+            mentioned = false
+          }
+
           console.log(`Group chat message from ${from}: ${body}`);
-          this.emitter.emit('groupMessage', { from, type, body})
+          this.emitter.emit('groupMessage', { from, type, body, mentioned })
         }
       });
     });
@@ -692,7 +702,7 @@ export class XmppClient {
     );
     await this.xmpp.send(presence);
     console.log('Joined group chat');
-    // await new Promise(resolve => setTimeout(resolve, 2000));
+    // await sleep(2000)
   }
 
   async sendRoomMessage ({ room, recipient, prompt, mucHost }) {

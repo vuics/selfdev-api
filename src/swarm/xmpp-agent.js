@@ -53,12 +53,15 @@ export default class XmppAgent {
       });
     }
     if (this.handleRooms) {
-      this.xmppClient.emitter.on('groupMessage', async ({ from, body }) => {
+      this.xmppClient.emitter.on('groupMessage', async ({ from, body, mentioned }) => {
         verbose('Received a group message from:', from, ', body:', body)
+
+        if (!mentioned) { return }
+
         const replyFunc = async ({ content }) => {
           verbose('room replyFunc content:', content)
-          const roomJid = from.split('/')[0]
-          const mucHost = roomJid.split('@')[1]
+          const [ roomJid ] = from.split('/')
+          const [ , mucHost ] = roomJid.split('@')
           return this.xmppClient.sendRoomMessage({
             recipient: from,
             prompt: content,
@@ -99,7 +102,6 @@ export default class XmppAgent {
         domain: this.credentials.host,
         mucHost: this.handleRooms ? conf.xmpp.mucHost : undefined,
         joinRooms: this.handleRooms ? this.agent.options.joinRooms : undefined,
-        nick: this.handleRooms ? this.agent.options.name : undefined,
       })
     } catch (err) {
       error('Error connecting:', err)
