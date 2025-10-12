@@ -1,16 +1,6 @@
-import dotenv from 'dotenv';
-import Redis from 'ioredis';
-// import vault from 'node-vault';
-import { randomUUID } from 'crypto';
 import process from 'process';
-// import { Box } from 'box-node';
-
 import { inspect } from 'util'
-// import axios from 'axios'
-// import { v4 as uuidv4 } from 'uuid'
-// import { transporter } from '../mailer.js'
-// import lodash from 'lodash'
-// const { isEmpty, has } = lodash
+// import vault from 'node-vault';
 
 import { log, warn, error, Verbose } from '../services.js'
 import conf, { revealConf } from '../conf.js'
@@ -20,7 +10,7 @@ import { sleep } from '../utils/helper.js'
 import '../mongo.js'
 import User from '../models/user.js'
 import Agent from '../models/agent.js'
-import '../redis.js'  // FIXME: Remove file or move there all the redis code?
+import { redisClient, connectToRedis } from '../redis.js'
 
 const verbose = Verbose('sd:swarm/index'); verbose('')
 
@@ -31,28 +21,6 @@ const archetypeClasses = {
   "maptrix-v1.0": MaptrixV1,
 }
 
-
-// FIXME: Replace dotenv with conf completelly
-dotenv.config();
-
-
-// TODO: Move to conf
-// // ----------------- Configuration -----------------
-// const DB_URL = process.env.DB_URL || 'mongodb://mongo.dev.local:27017/selfdev';
-// const XMPP_HOST = process.env.XMPP_HOST || 'selfdev-prosody.dev.local';
-// const XMPP_PASSWORD = process.env.XMPP_PASSWORD || '123';
-// const XMPP_MUC_HOST = process.env.XMPP_MUC_HOST || `conference.${XMPP_HOST}`;
-const MONITOR_SECONDS = parseInt(process.env.MONITOR_SECONDS || '60', 10);
-
-const REDIS_URL = process.env.REDIS_URL || 'redis://redis.dev.local:6379/0';
-const REDIS_SOCKET_TIMEOUT = parseInt(process.env.REDIS_SOCKET_TIMEOUT || '10', 10) * 1000;
-const REDIS_CONNECT_TIMEOUT = parseInt(process.env.REDIS_CONNECT_TIMEOUT || '15', 10) * 1000;
-const LOCK_TIMEOUT = parseInt(process.env.LOCK_TIMEOUT || '120', 10);
-const LOCK_REFRESH = parseInt(process.env.LOCK_REFRESH || '30', 10);
-
-const CONTAINER_ID = process.env.CONTAINER_ID || process.env.HOSTNAME || randomUUID();
-const FILTER_ARCHETYPES = JSON.parse(process.env.FILTER_ARCHETYPES || '[ "maptrix-v1.0" ]');
-
 // const VAULT_ENABLE = (process.env.VAULT_ENABLE || 'false') === 'true';
 // const VAULT_ADDR = process.env.VAULT_ADDR || 'http://127.0.0.1:8200';
 // const VAULT_TOKEN = process.env.VAULT_TOKEN || '(not-set)';
@@ -60,7 +28,6 @@ const FILTER_ARCHETYPES = JSON.parse(process.env.FILTER_ARCHETYPES || '[ "maptri
 // const VAULT_UNSEAL_KEYS = (process.env.VAULT_UNSEAL_KEYS || '(not-set),(not-set),(not-set),(not-set),(not-set)').split(',');
 
 // // ----------------- Globals -----------------
-let redisClient = null;
 // let vaultClient = null;
 const runningXmppAgents = {};
 
@@ -90,7 +57,7 @@ const runningXmppAgents = {};
 //     return Boolean(
 //       this.deployed &&
 //       this.name &&
-//       (FILTER_ARCHETYPES.length === 0 || FILTER_ARCHETYPES.includes(this.archetype))
+//       (conf.swarm.filterArchetypes.length === 0 || conf.swarm.filterArchetypes.includes(this.archetype))
 //     );
 //   }
 
@@ -128,17 +95,8 @@ function isValid({ agent }) {
   return Boolean(
     agent.deployed &&
     agent.archetype in archetypeClasses &&
-    (FILTER_ARCHETYPES.length === 0 || FILTER_ARCHETYPES.includes(agent.archetype))
+    (conf.swarm.filterArchetypes.length === 0 || conf.swarm.filterArchetypes.includes(agent.archetype))
   );
-}
-
-// ----------------- Redis -----------------
-async function connectToRedis() {
-  redisClient = new Redis(REDIS_URL, {
-    connectTimeout: REDIS_CONNECT_TIMEOUT
-  });
-  await redisClient.ping();
-  log(`Connected to Redis at ${REDIS_URL}`);
 }
 
 // // ----------------- Vault -----------------
@@ -175,15 +133,18 @@ async function connectToRedis() {
 
 // ----------------- Distributed Lock -----------------
 async function checkAndClearStaleLock(agentId) {
+  verbose('checkAndClearStaleLock agentId:', agentId)
   if (!redisClient) return false;
   const lockKey = `agent_lock:${agentId}`;
   const heartbeatKey = `agent_heartbeat:${agentId}`;
 
   const lockOwner = await redisClient.get(lockKey);
+  verbose('lockOwner:', lockOwner)
   if (!lockOwner) return true;
 
   const lastHeartbeat = await redisClient.get(heartbeatKey);
-  if (!lastHeartbeat || (Date.now() / 1000 - parseFloat(lastHeartbeat) > LOCK_TIMEOUT)) {
+  verbose('lastHeartbeat:', lastHeartbeat)
+  if (!lastHeartbeat || (Date.now() / 1000 - parseFloat(lastHeartbeat) > conf.swarm.lockTimeoutSeconds)) {
     warn(`Clearing stale lock for agent ${agentId}`);
     await redisClient.del(lockKey);
     await redisClient.del(heartbeatKey);
@@ -193,22 +154,33 @@ async function checkAndClearStaleLock(agentId) {
 }
 
 async function acquireLock(agentId) {
-  if (!redisClient) return false;
+  verbose('acquireLock agentId:', agentId)
+  verbose('redisClient:', !!redisClient)
+  if (!redisClient) {
+    warn('Redis is disabled or not connected')
+    return false;
+  }
   const lockKey = `agent_lock:${agentId}`;
   const heartbeatKey = `agent_heartbeat:${agentId}`;
 
   const lockOwner = await redisClient.get(lockKey);
-  if (lockOwner === CONTAINER_ID) {
-    await redisClient.set(heartbeatKey, String(Date.now() / 1000), 'EX', LOCK_TIMEOUT * 2);
+  verbose('lockOwner:', lockOwner)
+  verbose('conf.contaier.id', conf.container.id)
+  if (lockOwner === conf.container.id) {
+    verbose('lockOwner === conf.container.id')
+    await redisClient.set(heartbeatKey, String(Date.now() / 1000), 'EX', conf.swarm.lockTimeoutSeconds * 2);
     return true;
   }
 
   const lockCleared = await checkAndClearStaleLock(agentId);
+  verbose('stale lockCleared')
   if (!lockCleared) return false;
 
-  const acquired = await redisClient.set(lockKey, CONTAINER_ID, 'NX', 'EX', LOCK_TIMEOUT);
+  verbose('attempt to acquire lock')
+  const acquired = await redisClient.set(lockKey, conf.container.id, 'NX', 'EX', conf.swarm.lockTimeoutSeconds);
+  verbose('acquired:', acquired)
   if (acquired) {
-    await redisClient.set(heartbeatKey, String(Date.now() / 1000), 'EX', LOCK_TIMEOUT * 2);
+    await redisClient.set(heartbeatKey, String(Date.now() / 1000), 'EX', conf.swarm.lockTimeoutSeconds * 2);
     refreshLock(agentId);
     log(`Acquired lock for agent ${agentId}`);
     return true;
@@ -225,15 +197,15 @@ function refreshLock(agentId) {
     const lockKey = `agent_lock:${agentId}`;
     const heartbeatKey = `agent_heartbeat:${agentId}`;
     const lockOwner = await redisClient.get(lockKey);
-    if (lockOwner === CONTAINER_ID) {
-      await redisClient.expire(lockKey, LOCK_TIMEOUT);
-      await redisClient.set(heartbeatKey, String(Date.now() / 1000), 'EX', LOCK_TIMEOUT * 2);
+    if (lockOwner === conf.container.id) {
+      await redisClient.expire(lockKey, conf.swarm.lockTimeoutSeconds);
+      await redisClient.set(heartbeatKey, String(Date.now() / 1000), 'EX', conf.swarm.lockTimeoutSeconds * 2);
     } else {
       warn(`Lost lock for agent ${agentId}`);
       await stopAgent(agentId);
       clearInterval(interval);
     }
-  }, LOCK_REFRESH * 1000);
+  }, conf.swarm.lockRefreshSeconds * 1000);
 }
 
 async function releaseLock(agentId) {
@@ -241,7 +213,7 @@ async function releaseLock(agentId) {
   const lockKey = `agent_lock:${agentId}`;
   const heartbeatKey = `agent_heartbeat:${agentId}`;
   const lockOwner = await redisClient.get(lockKey);
-  if (lockOwner === CONTAINER_ID) {
+  if (lockOwner === conf.container.id) {
     await redisClient.del(lockKey);
     await redisClient.del(heartbeatKey);
     log(`Released lock for agent ${agentId}`);
@@ -291,7 +263,7 @@ async function stopAgent({ agentId }) {
 async function syncAgents() {
   try {
     const agents = await Agent.find({
-      archetype: { $in: FILTER_ARCHETYPES }
+      archetype: { $in: conf.swarm.filterArchetypes }
     }).populate('userId').lean();
     log(`Retrieved ${agents.length} agent configurations`);
 
@@ -333,7 +305,7 @@ async function syncAgents() {
 function monitorAgents() {
   async function cycleMonitorAgents() {
     try {
-      log('Iterate monitorAgents');
+      log('cycleMonitorAgents');
       await syncAgents();
     } catch (e) {
       error(`Error in monitorAgents: ${e}`);
@@ -341,8 +313,12 @@ function monitorAgents() {
   }
 
   cycleMonitorAgents()
-  setInterval(cycleMonitorAgents, MONITOR_SECONDS * 1000)
+  setInterval(cycleMonitorAgents, conf.swarm.monitorSeconds * 1000)
 }
+
+process.on('uncaughtException', (err) => {
+  error('uncaughtException:', err)
+})
 
 // ----------------- Shutdown -----------------
 async function shutdown() {
@@ -367,11 +343,10 @@ process.on('SIGTERM', shutdown);
     // await mongoose.connect(DB_URL);
     // log(`Connected to MongoDB at ${DB_URL}`);
 
-    // FIXME: move to redis.js?
     await connectToRedis();
     // await connectToVault();
 
-    log(`Starting swarm with container ID: ${CONTAINER_ID}`);
+    log(`Starting swarm with container ID: ${conf.container.id}`);
     monitorAgents();
   } catch (e) {
     error(`Fatal error: ${e}`);

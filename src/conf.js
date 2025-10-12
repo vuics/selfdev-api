@@ -1,4 +1,5 @@
 import { config } from 'dotenv'
+import { randomUUID } from 'crypto'
 import lodash from 'lodash'
 const { cloneDeep } = lodash
 
@@ -22,6 +23,10 @@ const conf = {
   node: {
     tlsRejectUnauthorized: process.env.NODE_TLS_REJECT || '',
     defaultMaxListeners: num(process.env.NODE_DEFAULT_MAX_LISTENERS || 1000),
+  },
+
+  container: {
+    id: process.env.CONTAINER_ID || process.env.HOSTNAME || randomUUID(),
   },
 
   port: process.env.PORT || 6369,
@@ -77,6 +82,12 @@ const conf = {
       username: process.env.ARANGODB_AUTH_USERNAME || 'root',
       password: process.env.ARANGODB_AUTH_PASSWORD || '',
     },
+  },
+
+  redis: {
+    enable: bool(process.env.REDIS_ENABLE || false),
+    url: process.env.REDIS_URL || 'redis://redis.dev.local:6379/0',
+    connectTimeoutSeconds: num(process.env.REDIS_CONNECT_TIMEOUT_SECONDS || 15000),
   },
 
   jwt: {
@@ -411,7 +422,15 @@ const conf = {
       enable: (process.env.SCHEDULER_AUTOPAYMENT_ENABLE || true),
       cron: process.env.SCHEDULER_AUTOPAYMENT_CRON || "0 * * * *", // "*/1 * * * *",
     }
-  }
+  },
+
+  swarm: {
+    filterArchetypes: arr(process.env.SWARM_FILTER_ARCHETYPES || 'maptrix-v1.0'),
+
+    monitorSeconds: num(process.env.SWARM_MONITOR_SECONDS || 60),
+    lockTimeoutSeconds: num(process.env.SWARM_LOCK_TIMEOUT_SECONDS || 120),
+    lockRefreshSeconds: num(process.env.SWARM_LOCK_REFRESH_SECONDS || 30),
+  },
 }
 
 export default conf
