@@ -1,6 +1,5 @@
 import process from 'process';
 import { inspect } from 'util'
-// import vault from 'node-vault';
 
 import { log, warn, error, Verbose } from '../services.js'
 import conf, { revealConf } from '../conf.js'
@@ -11,6 +10,7 @@ import '../mongo.js'
 import User from '../models/user.js'
 import Agent from '../models/agent.js'
 import { redisClient, connectToRedis } from '../redis.js'
+import { replaceVaultValues } from '../vault.js'
 
 const verbose = Verbose('sd:swarm/index'); verbose('')
 
@@ -21,75 +21,7 @@ const archetypeClasses = {
   "maptrix-v1.0": MaptrixV1,
 }
 
-// const VAULT_ENABLE = (process.env.VAULT_ENABLE || 'false') === 'true';
-// const VAULT_ADDR = process.env.VAULT_ADDR || 'http://127.0.0.1:8200';
-// const VAULT_TOKEN = process.env.VAULT_TOKEN || '(not-set)';
-// const VAULT_UNSEAL = (process.env.VAULT_UNSEAL || 'false') === 'true';
-// const VAULT_UNSEAL_KEYS = (process.env.VAULT_UNSEAL_KEYS || '(not-set),(not-set),(not-set),(not-set),(not-set)').split(',');
-
-// // ----------------- Globals -----------------
-// let vaultClient = null;
 const runningXmppAgents = {};
-
-// // ----------------- Agent Config -----------------
-// class AgentConfig {
-//   constructor(doc, user) {
-//     this.doc = doc;
-//     this.user = user;
-//     this.id = String(doc._id);
-//     this.userId = String(doc.userId);
-//     this.deployed = doc.deployed || false;
-//     this.archetype = doc.archetype || null;
-
-//     // FIXME: does this replacement work?
-//     // this.options = new Box(doc.options || {});
-//     this.options = doc.options
-
-//     // this.updatedAt = doc.updatedAt || null;
-//     this.name = this.options.name;
-//     this.joinRooms = this.options.joinRooms;
-
-//     // FIXME: uncomment
-//     // this.replaceVaultValues(this.options);
-//   }
-
-//   isValid() {
-//     return Boolean(
-//       this.deployed &&
-//       this.name &&
-//       (conf.swarm.filterArchetypes.length === 0 || conf.swarm.filterArchetypes.includes(this.archetype))
-//     );
-//   }
-
-//   // getVaultValue(vaultKey) {
-//   //   if (!vaultClient) return '';
-//   //   try {
-//   //     const secret = vaultClient.read(`secret/data/user_${this.userId}`);
-//   //     return secret?.data?.data?.[vaultKey] || '';
-//   //   } catch (e) {
-//   //     error(`Error reading secret ${vaultKey} from Vault for user_${this.userId}: ${e}`);
-//   //     return null;
-//   //   }
-//   // }
-
-//   // replaceVaultValues(obj) {
-//   //   if (!vaultClient) return;
-
-//   //   if (obj instanceof Box || typeof obj === 'object') {
-//   //     for (const [key, value] of Object.entries(obj)) {
-//   //       if (value && typeof value === 'object' && 'valueFromVault' in value) {
-//   //         obj[key] = this.getVaultValue(value.valueFromVault);
-//   //       } else {
-//   //         this.replaceVaultValues(value);
-//   //       }
-//   //     }
-//   //   } else if (Array.isArray(obj)) {
-//   //     for (const item of obj) {
-//   //       this.replaceVaultValues(item);
-//   //     }
-//   //   }
-//   // }
-// }
 
 function isValid({ agent }) {
   return Boolean(
@@ -98,38 +30,6 @@ function isValid({ agent }) {
     (conf.swarm.filterArchetypes.length === 0 || conf.swarm.filterArchetypes.includes(agent.archetype))
   );
 }
-
-// // ----------------- Vault -----------------
-// async function connectToVault(retries = 20, baseDelay = 1000, maxDelay = 60000) {
-//   if (!VAULT_ENABLE) {
-//     warn('Vault is disabled.');
-//     return;
-//   }
-
-//   vaultClient = vault({ endpoint: VAULT_ADDR, token: VAULT_TOKEN });
-
-//   for (let attempt = 1; attempt <= retries; attempt++) {
-//     try {
-//       if (VAULT_UNSEAL) {
-//         const isSealed = await vaultClient.sys.isSealed();
-//         if (isSealed) {
-//           for (const key of VAULT_UNSEAL_KEYS) {
-//             if (!key || key.trim() === '(not-set)') continue;
-//             await vaultClient.sys.submitUnsealKey(key.trim());
-//           }
-//         }
-//       }
-//       return vaultClient;
-//     } catch (e) {
-//       const delay = Math.min(baseDelay * 2 ** (attempt - 1), maxDelay);
-//       const jitter = Math.random() + 0.5;
-//       const adaptiveDelay = delay * jitter;
-//       warn(`Attempt ${attempt}: Vault connection failed. Retrying in ${adaptiveDelay}ms`);
-//       await sleep(adaptiveDelay);
-//     }
-//   }
-//   throw new Error('Failed to authenticate with Vault after multiple attempts.');
-// }
 
 // ----------------- Distributed Lock -----------------
 async function checkAndClearStaleLock(agentId) {
@@ -234,6 +134,10 @@ async function startAgent({ agent }) {
   }
 
   const agentClass = archetypeClasses[agent.archetype]
+  // verbose('agent.options (before vault):', inspect(agent.options, { depth: null, colors: true }))
+  await replaceVaultValues({ obj: agent.options, userId: agent.userId._id })
+  // verbose('agent.options (after vault):', inspect(agent.options, { depth: null, colors: true }))
+
   const xmppAgent = new agentClass({
     agent,
   });
@@ -340,11 +244,7 @@ process.on('SIGTERM', shutdown);
     log(`Sleeping for ${sleepTime.toFixed(3)} seconds`);
     await sleep(sleepTime * 1000);
 
-    // await mongoose.connect(DB_URL);
-    // log(`Connected to MongoDB at ${DB_URL}`);
-
     await connectToRedis();
-    // await connectToVault();
 
     log(`Starting swarm with container ID: ${conf.container.id}`);
     monitorAgents();

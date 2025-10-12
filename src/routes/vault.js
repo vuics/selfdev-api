@@ -1,63 +1,12 @@
 import { Router } from 'express'
-import NodeVault from 'node-vault'
 import { checkAuth, checkAPIAuth } from '../middleware/check-auth.js'
 import { Verbose, log, warn, error } from '../services.js'
 import conf from '../conf.js'
+import { vaultClient } from '../vault.js'
 
 const verbose = Verbose('sd:routes/vault'); verbose('')
 const router = Router()
 
-let vault = null
-
-async function unsealVault() {
-  try {
-    let status = await vault.status();
-    log(`Vault status (before)> sealed: ${status.sealed}`);
-    if (!status.sealed) {
-      return log('Vault was already unsealed!');
-    }
-
-    let key, result
-    for (let key of conf.vault.unsealKeys) {
-      if (!key || key === '(not-set)') {
-        warn(`Skipping empty or invalid key`);
-        continue;
-      }
-
-      result = await vault.unseal({ key });
-      log(`Key applied. Sealed: ${result.sealed}`);
-      if (!result.sealed) {
-        log('Vault is now unsealed!');
-        break
-      }
-    }
-
-    status = await vault.status();
-    log(`Vault status (after)> sealed: ${status.sealed}`);
-  } catch (err) {
-    error('Error during unseal process:', err.message || err);
-  }
-}
-
-if (conf.vault.enable) {
-  try {
-    const options = {
-      apiVersion: 'v1', // default
-      endpoint: conf.vault.addr,
-      token: conf.vault.token,
-    };
-    // verbose("vault options:", options)
-    vault = NodeVault(options);
-    log('Vault client is connected')
-    // verbose("vault:", vault)
-  } catch (error) {
-    error('Vault client connection error:', error.message || error);
-  }
-
-  if (conf.vault.unseal) {
-    unsealVault();
-  }
-}
 
 function nullifyValues(data) {
   const onlyKeys = Object.fromEntries(
@@ -68,7 +17,7 @@ function nullifyValues(data) {
 
 const listSecrets = async (req, res, next) => {
   try {
-    if (!vault) {
+    if (!vaultClient) {
       throw new Error('Vault is disabled on backend')
     }
     const userId = req.user._id.toString()
@@ -76,7 +25,7 @@ const listSecrets = async (req, res, next) => {
     let data = {}
     let result;
     try {
-      result = await vault.read(`secret/data/user_${userId}`);
+      result = await vaultClient.read(`secret/data/user_${userId}`);
       data = result.data.data; // KV v2 nests data under data.data
       // console.log('Secret exists:', result.data);
     } catch (err) {
@@ -100,11 +49,11 @@ const listSecrets = async (req, res, next) => {
 
 const exposeSecret = async (req, res, next) => {
   try {
-    if (!vault) {
+    if (!vaultClient) {
       throw new Error('Vault is disabled on backend')
     }
     const userId = req.user._id.toString()
-    const result = await vault.read(`secret/data/user_${userId}`);
+    const result = await vaultClient.read(`secret/data/user_${userId}`);
     const data = result.data.data; // KV v2 nests data under data.data
     const { key } = req.body
     const expose = {
@@ -119,7 +68,7 @@ const exposeSecret = async (req, res, next) => {
 
 const addSecret = async (req, res, next) => {
   try {
-    if (!vault) {
+    if (!vaultClient) {
       throw new Error('Vault is disabled on backend')
     }
     const userId = req.user._id.toString()
@@ -127,8 +76,8 @@ const addSecret = async (req, res, next) => {
 
     let data = {};
     try {
-      const readResult = await vault.read(`secret/data/user_${userId}`);
-      // verbose('vault readResult:', readResult);
+      const readResult = await vaultClient.read(`secret/data/user_${userId}`);
+      // verbose('vaultClient readResult:', readResult);
       data = readResult.data.data; // KV v2: nested under data.data
     } catch (err) {
       if (err.response && err.response.statusCode === 404) {
@@ -142,10 +91,10 @@ const addSecret = async (req, res, next) => {
       ...data,
       [key]: value,
     }
-    const writeResult = await vault.write(`secret/data/user_${userId}`, {
+    const writeResult = await vaultClient.write(`secret/data/user_${userId}`, {
       data: newData,
     });
-    // verbose('vault writeResult:', writeResult)
+    // verbose('vaultClient writeResult:', writeResult)
     const onlyKeys = nullifyValues(newData)
     // verbose('onlyKeys:', onlyKeys)
     res.json(onlyKeys)
@@ -156,22 +105,22 @@ const addSecret = async (req, res, next) => {
 
 const deleteSecret = async (req, res, next) => {
   try {
-    if (!vault) {
+    if (!vaultClient) {
       throw new Error('Vault is disabled on backend')
     }
     const userId = req.user._id.toString()
-    const readResult = await vault.read(`secret/data/user_${userId}`);
-    // verbose('vault readResult:', readResult)
+    const readResult = await vaultClient.read(`secret/data/user_${userId}`);
+    // verbose('vaultClient readResult:', readResult)
     const data = readResult.data.data; // KV v2 nests data under data.data
     const { key } = req.body
     delete data[key]
     const newData = {
       ...data,
     }
-    const writeResult = await vault.write(`secret/data/user_${userId}`, {
+    const writeResult = await vaultClient.write(`secret/data/user_${userId}`, {
       data: newData,
     });
-    // verbose('vault writeResult:', writeResult)
+    // verbose('vaultClient writeResult:', writeResult)
     const onlyKeys = nullifyValues(newData)
     res.json(onlyKeys)
   } catch (err) {
