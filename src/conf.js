@@ -399,6 +399,9 @@ const conf = {
     mucHost: process.env.XMPP_MUC_HOST || 'conference.localhost',
     shareHost: process.env.XMPP_SHARE_HOST || 'share.localhost',
     shareUrlPrefix: process.env.SHARE_URL_PREFIX || 'https://selfdev-prosody.dev.local:5281/file_share/',
+
+    password: process.env.XMPP_PASSWORD || "a-geNt-$sec-ret-10m_pp",
+    reconnectMaxDelay: num(process.env.XMPP_RECONNECT_MAX_DELAY || 300),
   },
 
   // only for selfdev-apiworkers

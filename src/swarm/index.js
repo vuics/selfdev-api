@@ -2,10 +2,8 @@ import dotenv from 'dotenv';
 import Redis from 'ioredis';
 // import vault from 'node-vault';
 import { randomUUID } from 'crypto';
-// import { setTimeout as sleep } from 'timers/promises';
 import process from 'process';
 // import { Box } from 'box-node';
-
 
 import { inspect } from 'util'
 // import axios from 'axios'
@@ -16,14 +14,13 @@ import { inspect } from 'util'
 
 import { log, warn, error, Verbose } from '../services.js'
 import conf, { revealConf } from '../conf.js'
-import MaptrixV1 from './maptrix_v1.js'
+import MaptrixV1 from './maptrix-v1.js'
 import { sleep } from '../utils/helper.js'
 
-// Connect to MongoDB through Mongoose driver
-import '../mongo.js'  // FIXME: use it?
-import '../redis.js'  // FIXME: Remove file or move there all the redis code?
+import '../mongo.js'
 import User from '../models/user.js'
 import Agent from '../models/agent.js'
+import '../redis.js'  // FIXME: Remove file or move there all the redis code?
 
 const verbose = Verbose('sd:swarm/index'); verbose('')
 
@@ -32,6 +29,8 @@ log('public conf:', inspect(revealConf(), { colors: true, depth: null }))
 // FIXME: Replace dotenv with conf completelly
 dotenv.config();
 
+
+// TODO: Move to conf
 // // ----------------- Configuration -----------------
 // const DB_URL = process.env.DB_URL || 'mongodb://mongo.dev.local:27017/selfdev';
 // const XMPP_HOST = process.env.XMPP_HOST || 'selfdev-prosody.dev.local';

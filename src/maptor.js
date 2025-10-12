@@ -394,17 +394,18 @@ export async function playMapCore ({
 export class XmppClient {
   constructor () {
     this.client = null
-    this.emitter = null
+    // this.emitter = null
+    this.emitter = new EventEmitter();
     this.credentials = null
     this.roster = []
     this.presence = {}
   }
 
   async connect({ credentials, service, domain }) {
-    if (this.xmpp) {
-      console.warn('XMPP was already initialized');
-      return this.xmpp;
-    }
+    // if (this.xmpp) {
+    //   console.warn('XMPP was already initialized');
+    //   return this.xmpp;
+    // }
 
     if (!credentials || !credentials.user || !credentials.password || !credentials.jid) {
       console.error("No credentials error");
@@ -429,7 +430,7 @@ export class XmppClient {
       tls: { rejectUnauthorized: false },
     });
     // console.log('initXmppClient assign this.xmpp=', this.xmpp)
-    this.emitter = new EventEmitter();
+    // this.emitter = new EventEmitter();
 
 
     // ✅ Wrap connection in a Promise to await readiness

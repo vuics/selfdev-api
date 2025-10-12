@@ -11,7 +11,7 @@ import {
   createOnChatMessage,
   playMapCore,
   XmppClient,
-} from '../mapper.js'
+} from '../maptor.js'
 
 
 const verbose = Verbose('sd:routes/executor'); verbose('')
@@ -31,21 +31,9 @@ function useRef(initialValue) {
   return { current: initialValue };
 }
 
-async function executeMap({ map, user }) {
+export async function executeMap({ map, xmppClient }) {
   try {
     log('Executing map:', map.title, ', mapId:', map._id)
-
-    const xmppClient = new XmppClient()
-    await xmppClient.connect({
-      credentials: {
-        user: user.xmpp.user,
-        password: user.xmpp.password,
-        jid: `${user.xmpp.user}@${conf.xmpp.host}`,
-      },
-      service: conf.xmpp.websocketUrl,
-      domain: conf.xmpp.host,
-    })
-    console.log('XMPP initialized');
 
     const getNodes = () => map.flow.nodes;
     const getEdges = () => map.flow.edges;
@@ -94,6 +82,27 @@ async function executeMap({ map, user }) {
   }
 }
 
+export async function deriveMap({ basicMap }) {
+  try {
+    const mapData = basicMap.toObject();
+    delete mapData._id;
+    delete mapData.createdAt;
+    delete mapData.updatedAt;
+
+    const resultMap = new Map(mapData);
+    resultMap.title= `${basicMap.title} (result_${nanoid(9)})`;
+    resultMap.templateMapId = mapId;
+    resultMap.executing = true
+    resultMap.completed = false
+    await resultMap.save();
+
+    return resultMap
+  } catch (err) {
+    error('Error deriving map:', err)
+    throw err
+  }
+}
+
 app.post('/map/:mapId', checkAuth, async (req, res) => {
   try {
     verbose('mapper/run')
@@ -108,22 +117,25 @@ app.post('/map/:mapId', checkAuth, async (req, res) => {
       return res.status(403).json({ error: 'Access to the map is forbidden' });
     }
 
-    const mapData = basicMap.toObject();
-    delete mapData._id;
-    delete mapData.createdAt;
-    delete mapData.updatedAt;
-
-    const resultMap = new Map(mapData);
-    resultMap.title= `${basicMap.title} (result_${nanoid(9)})`;
-    resultMap.templateMapId = mapId;
-    resultMap.executing = true
-    resultMap.completed = false
-    await resultMap.save();
+    const resultMap = await deriveMap({ basicMap })
     res.json(resultMap);
 
-    await executeMap({ map: resultMap, user: req.user })
+    const xmppClient = new XmppClient()
+    await xmppClient.connect({
+      credentials: {
+        user: req.user.xmpp.user,
+        password: req.user.xmpp.password,
+        jid: `${req.user.xmpp.user}@${conf.xmpp.host}`,
+      },
+      service: conf.xmpp.websocketUrl,
+      domain: conf.xmpp.host,
+    })
+
+    console.log('XMPP initialized');
+
+    await executeMap({ map: resultMap, xmppClient })
   } catch (err) {
-    error('Error running mapper:', err)
+    error('Error deriving/executing map:', err)
     throw err
   }
 });
