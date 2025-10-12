@@ -244,7 +244,7 @@ process.on('SIGTERM', shutdown);
     log(`Sleeping for ${sleepTime.toFixed(3)} seconds`);
     await sleep(sleepTime * 1000);
 
-    await connectToRedis();
+    // await connectToRedis();
 
     log(`Starting swarm with container ID: ${conf.container.id}`);
     monitorAgents();

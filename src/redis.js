@@ -14,3 +14,9 @@ export async function connectToRedis() {
     log(`Connected to Redis at ${conf.redis.url}`);
   }
 }
+
+(async () => {
+  if (conf.redis.enable) {
+    await connectToRedis();
+  }
+})()

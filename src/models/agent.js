@@ -223,6 +223,7 @@ export default mongoose.model(
         output: [String],
         parseJson: Boolean,
         promptKey: String,
+        sendStatus: Boolean,
       },
     },
   })

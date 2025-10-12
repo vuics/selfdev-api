@@ -76,7 +76,9 @@ export default class MaptrixV1 extends XmppAgent {
       }
 
       const resultMap = await deriveMap({ basicMap })
-      replyFunc({ content: `Initialized result map ${resultMap.title}` })
+      if (maptrix.sendStatus) {
+        replyFunc({ content: `Initialized result map ${resultMap.title}` })
+      }
 
       const serviceAgent = this.agent
       serviceAgent.options.name = `__maptor_${this.agent.options.name}`
@@ -92,7 +94,9 @@ export default class MaptrixV1 extends XmppAgent {
         input,
         output: maptrix.output,
       })
-      replyFunc({ content: `Done execution of result map ${resultMap.title}` })
+      if (maptrix.sendStatus) {
+        replyFunc({ content: `Done execution of result map ${resultMap.title}` })
+      }
       return output_text
     } catch (err) {
       error('Error chatting maptrix:', err)
