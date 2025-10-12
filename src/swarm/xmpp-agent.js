@@ -9,9 +9,10 @@ import { sleep } from '../utils/helper.js'
 const verbose = Verbose('sd:swarm/xmpp-agent'); verbose('')
 
 export default class XmppAgent {
-  constructor ({ agent }) {
+  constructor ({ agent, handleChat=true } = {}) {
     this.agent = agent
     this.xmppClient = null
+    this.handleChat = handleChat
 
     this.credentials = {
       user: agent.options.name,
@@ -38,16 +39,18 @@ export default class XmppAgent {
         error(`XMPP error: ${err}`);
       }
     })
-    this.xmppClient.emitter.on('chatMessage', async ({ from, body }) => {
-      verbose('Received a chat message from:', from, ', body:', body)
-      const replyFunc = async ({ content }) => {
-        verbose('replyFunc content:', content)
-        return this.xmppClient.sendPersonalMessage({ recipient: from, prompt: content })
-      }
-      const content = await this.chat({ prompt: body, replyFunc })
-      verbose('chat returned content:', content)
-      await replyFunc({ content })
-    });
+    if (this.handleChat) {
+      this.xmppClient.emitter.on('chatMessage', async ({ from, body }) => {
+        verbose('Received a chat message from:', from, ', body:', body)
+        const replyFunc = async ({ content }) => {
+          verbose('replyFunc content:', content)
+          return this.xmppClient.sendPersonalMessage({ recipient: from, prompt: content })
+        }
+        const content = await this.chat({ prompt: body, replyFunc })
+        verbose('chat returned content:', content)
+        await replyFunc({ content })
+      });
+    }
     await this.connect()
   }
 

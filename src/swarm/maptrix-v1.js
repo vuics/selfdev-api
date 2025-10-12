@@ -48,20 +48,32 @@ export default class MaptrixV1 extends XmppAgent {
     const resultMap = await deriveMap({ basicMap })
     replyFunc({ content: `Initialized result map ${resultMap.title}` })
 
-    const xmppClient = new XmppClient()
-    await xmppClient.connect({
-      credentials: {
-        user: this.agent.userId.xmpp.user,
-        password: this.agent.userId.xmpp.password,
-        jid: `${this.agent.userId.xmpp.user}@${conf.xmpp.host}`,
-      },
-      service: conf.xmpp.websocketUrl,
-      domain: conf.xmpp.host,
+    const serviceAgent = this.agent
+    serviceAgent.options.name = `__maptor_${this.agent.options.name}`
+    const serviceXmppAgent = new XmppAgent({
+      agent: serviceAgent,
     })
-    console.log('XMPP initialized');
+    await serviceXmppAgent.start()
+
+    // const xmppClient = new XmppClient()
+    // await xmppClient.connect({
+    //   credentials: {
+    //     user: this.agent.userId.xmpp.user,
+    //     password: this.agent.userId.xmpp.password,
+    //     jid: `${this.agent.userId.xmpp.user}@${conf.xmpp.host}`,
+    //   },
+    //   service: conf.xmpp.websocketUrl,
+    //   domain: conf.xmpp.host,
+    // })
+    // console.log('XMPP initialized');
 
     // await executeMap({ map: resultMap, xmppClient: this.xmppClient })
-    await executeMap({ map: resultMap, xmppClient })
+    // await executeMap({ map: resultMap, xmppClient })
+    await executeMap({
+      map: resultMap,
+      xmppClient: serviceXmppAgent.xmppClient,
+      handleChat: false,
+    })
     return `Done execution of result map ${resultMap.title}`
   }
 }
