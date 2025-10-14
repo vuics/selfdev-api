@@ -148,7 +148,7 @@ NodesArray.discriminator('NoteNode', new mongoose.Schema({
   color: String,             // The text or accent color used for the node's content or label
   backgroundColor: String,   // The fill color of the node's background
   selected: Boolean,         // Indicates whether the node is currently selected in the ReactFlow editor
-}, { _id: false }))
+}, { _id: false, strict: false }))
 
 NodesArray.discriminator('group', new mongoose.Schema({
   data: GroupNodeDataSchema,
