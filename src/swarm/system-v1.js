@@ -1,3 +1,4 @@
+import stringify from 'json-stringify-pretty-compact';
 import lodash from 'lodash'
 const { cloneDeep } = lodash
 
@@ -39,7 +40,7 @@ export default class SystemV1 extends XmppAgent {
   async chat({ prompt, replyFunc=()=>{}} = {}) {
     try {
       verbose(`prompt: ${prompt}`);
-      // verbose(`this.agent.options: ${JSON.stringify(this.agent.options)}`);
+      // verbose(`this.agent.options: ${stringify(this.agent.options)}`);
       const { system } = this.agent.options;
       verbose('system:', system)
       const userId = this.agent.userId
@@ -49,10 +50,8 @@ export default class SystemV1 extends XmppAgent {
       try {
         obj = JSON.parse(prompt.trim());
       } catch (err) {
-        obj = {};
-        warn('Cannot parse the JSON from the prompt')
+        throw new Error(`Cannot parse the JSON from the prompt: ${err}`)
       }
-      verbose('obj:', obj);
 
       verbose('obj:', obj)
       const { _id, data } = obj
@@ -73,31 +72,44 @@ export default class SystemV1 extends XmppAgent {
       switch (operation) {
         case 'create':
           const doc = await createDocument({ Model, data, userId })
-          output = JSON.stringify(doc)
+          output = stringify(doc)
           break
         case 'get':
           if (!_id) { throw new Error('The _id field is not present in the prompt') }
           const fetched = await getDocumentById({ Model, _id, userId });
-          output = JSON.stringify(fetched)
+          output = stringify(fetched)
           break
         case 'update':
+
+          // TODO: permit operation only for the admin superuser with special previliges
+          throw new Error('Operation is not permitted')
+
           if (!_id) { throw new Error('The _id field is not present in the prompt') }
           const updated = await updateDocumentById({ Model, _id, data, userId });
-          output = JSON.stringify(updated)
+          output = stringify(updated)
           break
         case 'delete':
+
+          // TODO: permit operation only for the admin superuser with special previliges
+          throw new Error('Operation is not permitted')
+
           if (!_id) { throw new Error('The _id field is not present in the prompt') }
           await deleteDocumentById({ Model, _id, userId });
-          output = JSON.stringify({})
+          output = stringify({})
           break
+
         case 'list':
+
+          // TODO: permit operation only for the admin superuser with special previliges
+          throw new Error('Operation is not permitted')
+
           const index = await listDocuments({
             Model,
             userId,
             filter: data.filter,
             options: data.options
           });
-          output = JSON.stringify(index)
+          output = stringify(index)
           break
         default:
           throw new Error('Unknown operation')
@@ -105,7 +117,7 @@ export default class SystemV1 extends XmppAgent {
       return output
     } catch (err) {
       error('Error propmting SystemV1:', err)
-      return `Error prompting SystemV1: ${err}`
+      return err.toString()
     }
   }
 }

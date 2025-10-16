@@ -2,6 +2,8 @@ import { randomUUID, createHash } from 'crypto';
 import { nanoid } from 'nanoid'
 import mustache from 'mustache';
 import slugify from 'slugify';
+import jp from 'jsonpath'
+import stringify from 'json-stringify-pretty-compact';
 import lodash from 'lodash'
 const { cloneDeep, camelCase } = lodash
 
@@ -14,7 +16,7 @@ import { XmppClient } from '../maptor.js'
 import '../mongo.js'
 import { deriveMap, executeMap } from '../routes/executor.js'
 import conf from '../conf.js'
-import { extractAndParseJson } from '../utils/helper.js'
+import { processJsonPath, processJsonDot } from '../utils/helper.js'
 
 const verbose = Verbose('sd:swarm/transform-v1'); verbose('')
 
@@ -92,14 +94,33 @@ export default class TransformV1 extends XmppAgent {
         case 'suffix':
           return prompt + (transform.suffix ?? '');
 
-        case 'template':
+        case 'template': {
           // use Mustache templating
-          let obj = {}
+          let obj = {};
           try { obj = JSON.parse(prompt.trim()); } catch (err) { obj = {}  }
           return mustache.render(transform.template ?? '', obj);
+        }
 
         case 'slugify':
           return slugify(prompt, { lower: transform.slugify ?? true });
+
+        case 'jsondot': {
+          try {
+            const cmd = JSON.parse(prompt.trim());
+            return stringify(processJsonDot(cmd))
+          } catch (err) {
+            throw new Error(`Error parsing jsondot command: ${err}`)
+          }
+        }
+
+        case 'jsonpath': {
+          try {
+            const cmd = JSON.parse(prompt.trim());
+            return stringify(processJsonPath(cmd))
+          } catch (err) {
+            throw new Error(`Error parsing jsonpath command: ${err}`)
+          }
+        }
 
         default:
           return prompt;
@@ -109,6 +130,7 @@ export default class TransformV1 extends XmppAgent {
       return ' '
     } catch (err) {
       error('Error chatting TransformV1:', err)
+      return err.toString()
     }
   }
 }
