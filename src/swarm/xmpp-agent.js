@@ -47,7 +47,7 @@ export default class XmppAgent {
           verbose('replyFunc content:', content)
           return this.xmppClient.sendPersonalMessage({ recipient: from, prompt: content })
         }
-        const content = await this.chat({ prompt: body, replyFunc })
+        const content = await this.chat({ prompt: body, replyFunc, from })
         verbose('chat returned content:', content)
         await replyFunc({ content })
       });
@@ -69,7 +69,7 @@ export default class XmppAgent {
             mucHost,
           })
         }
-        const content = await this.chat({ prompt: body, replyFunc })
+        const content = await this.chat({ prompt: body, replyFunc, from })
         verbose('chat returned content for room:', content)
         await replyFunc({ content })
       });

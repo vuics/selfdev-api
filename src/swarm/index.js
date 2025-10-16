@@ -6,6 +6,7 @@ import conf, { revealConf } from '../conf.js'
 import MaptrixV1 from './maptrix-v1.js'
 import SystemV1 from './system-v1.js'
 import TransformV1 from './transform-v1.js'
+import ProxyV1 from './proxy-v1.js'
 import { sleep } from '../utils/helper.js'
 
 import '../mongo.js'
@@ -23,6 +24,7 @@ const archetypeClasses = {
   "maptrix-v1.0": MaptrixV1,
   "system-v1.0": SystemV1,
   "transform-v1.0": TransformV1,
+  "proxy-v1.0": ProxyV1,
 }
 
 const runningXmppAgents = {};

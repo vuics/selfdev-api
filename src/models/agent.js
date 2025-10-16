@@ -58,6 +58,10 @@ export default mongoose.model(
         slugify: Boolean,  // for 'slugify'
       },
 
+      proxy: {
+        controlKey: String,
+      },
+
       // architect: {
       // },
 
