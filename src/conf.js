@@ -416,6 +416,8 @@ const conf = {
   },
 
   firefly: {
+    host: process.env.FIREFLY_HOST || 'https://firefly1.hyag.ru',
+    namespace: process.env.FIREFLY_NAMESPACE || 'default',
     commanderUrl: process.env.FIREFLY_COMMANDER_URL || 'http://aaa-wn.local:8387',
   },
 

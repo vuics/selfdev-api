@@ -1,10 +1,13 @@
 import { Router } from 'express'
 import axios from 'axios'
+import { inspect } from 'util'
+// import { randomUUID } from 'crypto'
 
 import { checkAuth, checkAPIAuth } from '../middleware/check-auth.js'
 import { Verbose, log, warn, error } from '../services.js'
 import conf from '../conf.js'
 import User from '../models/user.js'
+import firefly from '../firefly.js'
 
 const verbose = Verbose('sd:routes/firefly'); verbose('')
 const router = Router()
@@ -71,11 +74,8 @@ function parseCommanderResponse(raw) {
 
 const account = async (req, res, next) => {
   try {
-    let address = null
-
     if (req.user?.firefly?.address) {
-      address = req.user.firefly.address;
-      verbose('Using existing Firefly account address:', address);
+      verbose('Using existing Firefly account address:', req.user.firefly.address);
     } else {
       log('Register a new Firefly account for user _id:', req.user._id, ', email:', req.user.email)
 
@@ -89,13 +89,11 @@ const account = async (req, res, next) => {
         verbose('Firefly Registration Data:', response.data);
         const parsedResponse = parseCommanderResponse(response.data)
         verbose('parsedResponse:', parsedResponse)
-        address = parsedResponse?.commandOutput?.address
-        verbose('address:', address)
-
         if (!req.user.firefly) {
           req.user.firefly = {};
         }
-        req.user.firefly.address = address;
+        req.user.firefly.address = parsedResponse?.commandOutput
+        verbose('address:', req.user.firefly.address)
         await req.user.save();
         // verbose('Saved new XMPP credentials to user document:', req.user);
       } catch (err) {
@@ -109,9 +107,45 @@ const account = async (req, res, next) => {
         throw new Error('Failed to register Firefly account: ' + err.message);
       }
     }
+
+    if (req.user?.firefly?.identityId) {
+      verbose('Using existing Firefly identityId:', req.user.firefly.identityId);
+    } else {
+      log('Register a new Firefly identity for user _id:', req.user._id, ', email:', req.user.email)
+
+      try {
+        const status = await firefly.getStatus();
+        console.log('Firefly status:', inspect(status, { depth: null, colors: true }));
+
+        const identity = await firefly.createIdentity({
+          name: `user_${req.user._id}`,
+          key: req.user.firefly.address,
+          parent: status.org.id,
+        })
+        console.log('identity:', identity)
+        req.user.firefly.identityId = identity.id;
+        console.log('identityId:', req.user.firefly.identityId)
+        await req.user.save();
+      } catch (err) {
+        throw new Error('Failed to register Firefly identity: ' + err.message);
+      }
+    }
+
+    let balances = []
+    try {
+      balances = await firefly.getTokenBalances({
+        key: req.user.firefly.address,
+      })
+      console.log('balances:', balances)
+    } catch (err) {
+      throw new Error('Failed to get account balances: ' + err.message);
+    }
+
     const out = {
       result: 'ok',
-      address,
+      address: req.user.firefly.address,
+      identityId: req.user.firefly.identityId,
+      balances,
     }
     verbose('out:', out)
     res.json(out)

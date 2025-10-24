@@ -45,6 +45,7 @@ const schema = mongoose.Schema({
   },
   firefly: {
     address: String,
+    identityId: String,
   },
   stripe: {
     customerId: String,
