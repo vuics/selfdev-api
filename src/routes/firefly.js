@@ -210,28 +210,14 @@ router.post('/collect', checkAuth, async (req, res, next) => {
       throw new Error('Used does not have registered firefly identity')
     }
     verbose('collect body:', req.body)
-    const { pool, from, /*tokenIndex,*/ amount } = req.body
-
-    // // TODO: remove, and relly on POST /approvals
-    // const approved = await firefly.approveTokens({
-    //   pool,
-    //   key: from,
-    //   operator: req.user.firefly.address,
-    //   config: {
-    //     allowance: amount, // If 0 or not set, the approval is valid for any number.
-    //     // allowance: 0, // If 0 or not set, the approval is valid for any number.
-    //   },
-    //   // approved: false,  // Setting to false can revoke an existing approval.
-    //   approved: true,  // Setting to false can revoke an existing approval.
-    // })
-    // verbose('approved:', approved)
+    const { pool, from, tokenIndex, amount } = req.body
 
     const collected = await firefly.transferTokens({
       pool,
       to: req.user.firefly.address,
       from,
       key: req.user.firefly.address, // from and key are different, need an approval
-      // tokenIndex,
+      tokenIndex,
       amount,
     });
     verbose('collected:', collected)
@@ -253,23 +239,15 @@ router.get('/approvals', checkAuth, async (req, res, next) => {
       throw new Error('Used does not have registered firefly identity')
     }
     const approvals = await firefly.getTokenApprovals({
-      // pool,
       key: req.user.firefly.address,
-      // operator: req.user.firefly.address,
-      // config: {
-      //   allowance: amount, // If 0 or not set, the approval is valid for any number.
-      //   // allowance: 0, // If 0 or not set, the approval is valid for any number.
-      // },
-      // // approved: false,  // Setting to false can revoke an existing approval.
-      // approved: true,  // Setting to false can revoke an existing approval.
     })
-    verbose('approvals:', approvals)
+    // verbose('approvals:', approvals)
 
     const out = {
       result: 'ok',
       approvals,
     }
-    verbose('out:', out)
+    // verbose('out:', out)
     res.json(out)
   } catch (err) {
     error('firefly getting approvals error:', err)
@@ -283,7 +261,7 @@ router.post('/approvals', checkAuth, async (req, res, next) => {
       throw new Error('Used does not have registered firefly identity')
     }
     verbose('POST approvals body:', req.body)
-    const { operator, pool, from, /*tokenIndex,*/ allowance, /*approved*/ } = req.body
+    const { operator, pool, from, allowance, approved } = req.body
 
     const approval = await firefly.approveTokens({
       pool,
@@ -292,7 +270,7 @@ router.post('/approvals', checkAuth, async (req, res, next) => {
       config: {
         allowance, // If not set, the approval is valid for any number.
       },
-      // approved,  // Setting to false can revoke an existing approval.
+      approved,  // Setting to false can revoke an existing approval.
     })
     verbose('approval:', approval)
 
