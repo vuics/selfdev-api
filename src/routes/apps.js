@@ -20,6 +20,58 @@ import conf from '../conf.js'
 const verbose = Verbose('sd:routes/apps'); verbose('');
 const router = Router();
 
+async function installApp ({ userId, files }) {
+  const app = new App({
+    userId,
+  });
+
+  // Loop through extracted files and verbose content
+  for (const file of files) {
+    if (file.path.endsWith('.json')) {
+      if (file.path.startsWith('package/hyag/maps/._') ||
+          file.path.startsWith('package/hyag/agents/._')) {
+        verbose(`Skip hidden json file: ${file.path}`);
+        continue
+      }
+      let data = null
+      try {
+        data = JSON.parse(file.content)
+      } catch (err) {
+        throw new Error(`Cannot parse json at ${file.path}: ${err.toString()}`)
+      }
+
+      if (file.path === 'package/package.json') {
+        verbose(`package.json file: ${file.path}\nContent:\n${file.content}\n---`);
+        app.package = data
+      } else if (file.path.startsWith('package/hyag/maps/')) {
+        verbose(`Map file: ${file.path}\nContent:\n${file.content}\n---`);
+        const map = new Map({
+          ...data,
+          userId,
+          appId: app._id,
+        })
+        await map.save()
+        app.mapIds.push(map._id)
+      } else if (file.path.startsWith('package/hyag/agents/')) {
+        verbose(`Agent file: ${file.path}\nContent:\n${file.content}\n---`);
+        const agent = new Agent({
+          ...data,
+          userId,
+          appId: app._id,
+        })
+        await agent.save()
+        app.agentIds.push(agent._id)
+      } else {
+        verbose(`Unknown JSON file: ${file.path}\n---`);
+      }
+    } else {
+      verbose(`File: ${file.path}`);
+    }
+  }
+  await app.save();
+  return app
+}
+
 async function uninstallApp ({ app }) {
   if (app) {
     verbose('Deleting installed app: mapIds:', app.mapIds,
@@ -263,55 +315,7 @@ router.post('/install', checkAuth, async (req, res, next) => {
       await decryptAndExtract({ files, vaultKeyValue })
     }
 
-
-    app = new App({
-      userId: req.user._id
-    });
-
-    // Loop through extracted files and verbose content
-    for (const file of files) {
-      if (file.path.endsWith('.json')) {
-        if (file.path.startsWith('package/hyag/maps/._') ||
-            file.path.startsWith('package/hyag/agents/._')) {
-          verbose(`Skip hidden json file: ${file.path}`);
-          continue
-        }
-        let data = null
-        try {
-          data = JSON.parse(file.content)
-        } catch (err) {
-          throw new Error(`Cannot parse json at ${file.path}: ${err.toString()}`)
-        }
-
-        if (file.path === 'package/package.json') {
-          verbose(`package.json file: ${file.path}\nContent:\n${file.content}\n---`);
-          app.package = data
-        } else if (file.path.startsWith('package/hyag/maps/')) {
-          verbose(`Map file: ${file.path}\nContent:\n${file.content}\n---`);
-          const map = new Map({
-            ...data,
-            userId: req.user._id,
-            appId: app._id,
-          })
-          await map.save()
-          app.mapIds.push(map._id)
-        } else if (file.path.startsWith('package/hyag/agents/')) {
-          verbose(`Agent file: ${file.path}\nContent:\n${file.content}\n---`);
-          const agent = new Agent({
-            ...data,
-            userId: req.user._id,
-            appId: app._id,
-          })
-          await agent.save()
-          app.agentIds.push(agent._id)
-        } else {
-          verbose(`Unknown JSON file: ${file.path}\n---`);
-        }
-      } else {
-        verbose(`File: ${file.path}`);
-      }
-    }
-    await app.save();
+    app = await installApp({ userId: req.user._id, files })
 
     // "pricing": {
     //   "symbol": "SDFT",
