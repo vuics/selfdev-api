@@ -412,9 +412,53 @@ const conf = {
   },
 
   firefly: {
+    enable: bool(process.env.FIREFLY_ENABLE || true),
     host: process.env.FIREFLY_HOST || 'https://firefly1.hyag.ru',
     namespace: process.env.FIREFLY_NAMESPACE || 'default',
     commanderUrl: process.env.FIREFLY_COMMANDER_URL || 'http://aaa-wn.local:8387',
+
+    pools: json(process.env.FIREFLY_POOLS || `[ {
+        "name": "hyperagency-currency",
+        "symbol": "HYAG",
+        "type": "fungible",
+        "config": {
+          "blockNumber": "0"
+        }
+      }, {
+        "name": "hyperagency-nft",
+        "symbol": "HYAGN",
+        "type": "nonfungible",
+        "config": {
+          "blockNumber": "0"
+        }
+      }, {
+        "name": "hyperagency-purchase",
+        "symbol": "HYAGP",
+        "type": "nonfungible",
+        "config": {
+          "blockNumber": "0"
+        }
+      }, {
+        "name": "hyperagency-governance",
+        "symbol": "HYAGV",
+        "type": "fungible",
+        "config": {
+          "blockNumber": "0"
+        }
+      }, {
+        "name": "hyperagency-award",
+        "symbol": "HYAGW",
+        "type": "fungible",
+        "config": {
+          "blockNumber": "0"
+        }
+      } ]`),
+
+    // The orgAddress is the wallet address of the firefly organization that issued the token pools.
+    // Only this organization is allowed to mint the tokens.
+    orgAddress: process.env.FIREFLY_ORG_ADDRESS || '0x82e4cbb4dc0c2bdccaac3d38e573c6cf41a49a0a',
+    purchaseSymbol: 'HYAGP',
+    purchaseProto: 'web+hyag',
   },
 
   // only for selfdev-apiworkers

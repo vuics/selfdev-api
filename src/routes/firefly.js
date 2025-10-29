@@ -3,7 +3,7 @@ import axios from 'axios'
 import { inspect } from 'util'
 // import { randomUUID } from 'crypto'
 
-import { checkAuth, checkAPIAuth } from '../middleware/check-auth.js'
+import { checkAuth, checkAPIAuth, checkAdmin } from '../middleware/check-auth.js'
 import { Verbose, log, warn, error } from '../services.js'
 import conf from '../conf.js'
 import User from '../models/user.js'
@@ -25,7 +25,7 @@ const router = Router()
 //   "ptmPublicKey": ""
 // }
 // `;
-// console.log(parseCommanderResponse(rawResponse));
+// verbose(parseCommanderResponse(rawResponse));
 //
 // Output:
 // {
@@ -72,6 +72,45 @@ function parseCommanderResponse(raw) {
   return result;
 }
 
+export const checkFirefly = (req, res, next) => {
+  if (conf.firefly.enable) {
+    next()
+  } else {
+    res.status(403).json({
+      result: 'error',
+      message: 'The Firefly integration is disabled'
+    })
+  }
+}
+
+router.get('/admin-init', checkAuth, checkAdmin, checkFirefly, async (req, res) => {
+  try {
+    const pools = await firefly.getTokenPools()
+
+    const createdPools = []
+    for (const poolData of conf.firefly.pools) {
+      verbose('poolData:', poolData)
+      try {
+        const foundPool = pools?.find(p => p.symbol === poolData.symbol)
+        if (foundPool) {
+          warn('The pool already exists:', poolData.symbol)
+          continue
+        }
+        createdPools.push(await firefly.createTokenPool(poolData, { publish: true }))
+      } catch (err) {
+        error('Error creating pool:', poolData, ', error:', err)
+      }
+    }
+    res.send({
+      pools,
+      createdPools,
+    });
+  } catch (err) {
+    error('Error initializing firefly:', err)
+    return res.status(400).send({ result: 'error', message: err.toString() });
+  }
+});
+
 router.get('/account', checkAuth, async (req, res, next) => {
   try {
     if (req.user?.firefly?.address) {
@@ -115,16 +154,16 @@ router.get('/account', checkAuth, async (req, res, next) => {
 
       try {
         const status = await firefly.getStatus();
-        console.log('Firefly status:', inspect(status, { depth: null, colors: true }));
+        verbose('Firefly status:', inspect(status, { depth: null, colors: true }));
 
         const identity = await firefly.createIdentity({
           name: `user_${req.user._id}`,
           key: req.user.firefly.address,
           parent: status.org.id,
         })
-        console.log('identity:', identity)
+        verbose('identity:', identity)
         req.user.firefly.identityId = identity.id;
-        console.log('identityId:', req.user.firefly.identityId)
+        verbose('identityId:', req.user.firefly.identityId)
         await req.user.save();
       } catch (err) {
         throw new Error('Failed to register Firefly identity: ' + err.message);
@@ -136,7 +175,7 @@ router.get('/account', checkAuth, async (req, res, next) => {
       balances = await firefly.getTokenBalances({
         key: req.user.firefly.address,
       })
-      console.log('balances:', balances)
+      verbose('balances:', balances)
     } catch (err) {
       throw new Error('Failed to get account balances: ' + err.message);
     }
@@ -144,7 +183,7 @@ router.get('/account', checkAuth, async (req, res, next) => {
     let pools = []
     try {
       pools = await firefly.getTokenPools()
-      console.log('pools:', pools)
+      verbose('pools:', pools)
     } catch (err) {
       throw new Error('Failed to get account balances: ' + err.message);
     }

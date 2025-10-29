@@ -283,6 +283,89 @@ async function getValueFromVault({ userId, vaultKey }) {
   return data[vaultKey]
 }
 
+async function getVaultKeyValue({ seller }) {
+  const { vaultKey, address } = seller
+  const sellerUser = await User.findOne({ 'firefly.address': seller.address })
+  if (!sellerUser) {
+    throw new Error(`Cannot find the seller with specified address`)
+  }
+  verbose('sellerUser:', sellerUser)
+  const vaultKeyValue = await getValueFromVault({
+    userId: sellerUser._id.toString(),
+    vaultKey: seller.vaultKey,
+  })
+  // verbose('vaultKey:', vaultKey, '=', vaultKeyValue)
+  if (!vaultKeyValue) {
+    throw new Error(`Error getting the key ${seller.vaultKey} from the seller\'s vault. The key might be revoked or rotated. Please, contact the seller.`)
+  }
+  return vaultKeyValue
+}
+
+async function purchaseUnlessOwned({ user, packageJson, seller }) {
+  let transferred = null
+  let minted = null
+
+  const purchasePool = await getPoolByIdOrSymbol({ symbol: conf.firefly.purchaseSymbol })
+  if (!purchasePool) {
+    throw new Error(`Cannot find the token pool by the purchaseSymbol: ${conf.firefly.purchaseSymbol}`)
+  }
+  const uri = `${conf.firefly.purchaseProto}://${packageJson.name}`
+  const balances = await firefly.getTokenBalances({
+    key: user.firefly.address,
+  })
+  verbose('balances:', balances)
+  // Check the token
+  const foundPurchased = balances.find(b => b.uri === uri && b.pool === purchasePool.id)
+  verbose('foundPurchased:', foundPurchased)
+
+  if (foundPurchased) {
+    log('User has already purchased the app:', uri, 'Skipping transfer')
+  } else {
+    log('User is purchasing the app:', uri)
+    // "pricing": {
+    //   "symbol": "HYAG",
+    //   "tokenIndex": "",
+    //   "price": "1",
+    //   "model": "one-time",
+    //   "interval": ""
+    // }
+    const pricing = packageJson['x-hyag']?.pricing
+    if (seller && seller.address &&
+        pricing && pricing.symbol && pricing.price) {
+      const foundPool = await getPoolByIdOrSymbol({ symbol: pricing.symbol })
+      // verbose('foundPool:', foundPool)
+      if (!foundPool) {
+        throw new Error(`Cannot find the token pool by the symbol: ${pricing.symbol}`)
+      }
+      const { id: pool, type, decimals } = foundPool
+      const transferData = {
+        pool,
+        to: seller.address,
+        from: user.firefly.address,
+        key: user.firefly.address, // from and key are the same, no need the approval
+        tokenIndex: pricing.tokenIndex,
+        amount: type === 'fungible' ? decimalToToken(pricing.price, decimals) : pricing.price,
+      }
+      log('Transferring payment for purchasing the app:',
+        `${packageJson.name}@${packageJson.version}`,
+        ', transferData:', transferData)
+      transferred = await firefly.transferTokens(transferData);
+    }
+
+    const mintData = {
+      pool: purchasePool.id,
+      amount: '1',
+      uri,
+      to: user.firefly.address,
+      key: conf.firefly.orgAddress,
+    }
+    minted = await firefly.mintTokens(mintData);
+    log('Minted purchase license token:', mintData, ', minted:', minted)
+  }
+
+  return { transferred, minted }
+}
+
 router.post('/install', checkAuth, async (req, res, next) => {
   let app = null
   try {
@@ -298,60 +381,26 @@ router.post('/install', checkAuth, async (req, res, next) => {
 
     const seller = packageJson['x-hyag']?.seller
     if (seller && seller.address && seller.vaultKey) {
-      const { vaultKey, address } = seller
-      const sellerUser = await User.findOne({ 'firefly.address': seller.address })
-      if (!sellerUser) {
-        throw new Error(`Cannot find the seller with specified address`)
-      }
-      verbose('sellerUser:', sellerUser)
-      const vaultKeyValue = await getValueFromVault({
-        userId: sellerUser._id.toString(),
-        vaultKey: seller.vaultKey,
-      })
-      // verbose('vaultKey:', vaultKey, '=', vaultKeyValue)
-      if (!vaultKeyValue) {
-        throw new Error(`Error getting the key ${seller.vaultKey} from the seller\'s vault. The key might be revoked or rotated. Please, contact the seller.`)
-      }
+      const vaultKeyValue = await getVaultKeyValue({ seller })
       await decryptAndExtract({ files, vaultKeyValue })
     }
 
     app = await installApp({ userId: req.user._id, files })
 
-    // "pricing": {
-    //   "symbol": "SDFT",
-    //   "tokenIndex": "",
-    //   "price": "1",
-    //   "model": "one-time",
-    //   "interval": ""
-    // }
-    let transferred = null
-    const pricing = packageJson['x-hyag']?.pricing
-    if (seller && seller.address &&
-        pricing && pricing.symbol && pricing.price) {
-      const foundPool = await getPoolByIdOrSymbol({ symbol: pricing.symbol })
-      verbose('foundPool:', foundPool)
-      if (!foundPool) {
-        throw new Error(`Cannot find the token pool by the symbol: ${pricing.symbol}`)
-      }
-      const { id: pool, type, decimals } = foundPool
-      const transferData = {
-        pool,
-        to: seller.address,
-        from: req.user.firefly.address,
-        key: req.user.firefly.address, // from and key are the same, no need the approval
-        tokenIndex: pricing.tokenIndex,
-        amount: type === 'fungible' ? decimalToToken(pricing.price, decimals) : pricing.price,
-      }
-      log('Transferring payment for purchasing the app:',
-        `${packageJson.name}@${packageJson.version}`,
-        ', transferData:', transferData)
-      transferred = await firefly.transferTokens(transferData);
+    let transferred = null, minted = null
+    if (seller) {
+      ({ transferred, minted } = await purchaseUnlessOwned({
+        user: req.user,
+        packageJson,
+        seller,
+      }))
     }
 
     const out = {
       result: 'ok',
       installed: files.map(f => f.path),
       transferred,
+      minted,
     };
 
     res.json(out);

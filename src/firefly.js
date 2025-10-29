@@ -59,7 +59,7 @@ export function decimalToToken(decimalStr, decimals) {
 
 export async function getPoolByIdOrSymbol({ poolId = '', symbol = '' } = {}) {
   const pools = await firefly.getTokenPools()
-  verbose('pools:', pools)
+  // verbose('pools:', pools)
   let foundPool = null
   if (poolId) {
     foundPool = pools?.find(p => p.id === poolId)
@@ -71,7 +71,7 @@ export async function getPoolByIdOrSymbol({ poolId = '', symbol = '' } = {}) {
   if (!foundPool) {
     throw new Error('Unknown pool id or symbol')
   }
-  verbose('foundPool:', foundPool)
+  // verbose('foundPool:', foundPool)
   return foundPool
 }
 
