@@ -203,6 +203,24 @@ router.get('/account', checkAuth, async (req, res, next) => {
   }
 })
 
+router.get('/transfer', checkAuth, async (req, res, next) => {
+  try {
+    if (!req.user?.firefly?.address || !req.user?.firefly?.identityId) {
+      throw new Error('Used does not have registered firefly identity')
+    }
+    verbose('transfer body:', req.body)
+    const { fromOrTo } = req.body
+    const transfers = await firefly.getTokenTransfers({
+      fromOrTo: req.user.firefly.address,
+    });
+    verbose('transfers:', transfers)
+    res.json(transfers)
+  } catch (err) {
+    error('firefly listing transfers error:', err)
+    res.status(500).json({ result: 'error', message: err.toString()})
+  }
+})
+
 router.post('/transfer', checkAuth, async (req, res, next) => {
   try {
     if (!req.user?.firefly?.address || !req.user?.firefly?.identityId) {
