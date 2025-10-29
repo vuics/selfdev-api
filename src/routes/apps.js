@@ -14,6 +14,7 @@ import Map from '../models/map.js'
 import Agent from '../models/agent.js'
 import App from '../models/app.js'
 import { vaultClient } from '../vault.js'
+import firefly, { getPoolByIdOrSymbol, decimalToToken, tokenToDecimal } from '../firefly.js'
 import conf from '../conf.js'
 
 const verbose = Verbose('sd:routes/apps'); verbose('');
@@ -312,9 +313,41 @@ router.post('/install', checkAuth, async (req, res, next) => {
     }
     await app.save();
 
+    // "pricing": {
+    //   "symbol": "SDFT",
+    //   "tokenIndex": "",
+    //   "price": "1",
+    //   "model": "one-time",
+    //   "interval": ""
+    // }
+    let transferred = null
+    const pricing = packageJson['x-hyag']?.pricing
+    if (seller && seller.address &&
+        pricing && pricing.symbol && pricing.price) {
+      const foundPool = await getPoolByIdOrSymbol({ symbol: pricing.symbol })
+      verbose('foundPool:', foundPool)
+      if (!foundPool) {
+        throw new Error(`Cannot find the token pool by the symbol: ${pricing.symbol}`)
+      }
+      const { id: pool, type, decimals } = foundPool
+      const transferData = {
+        pool,
+        to: seller.address,
+        from: req.user.firefly.address,
+        key: req.user.firefly.address, // from and key are the same, no need the approval
+        tokenIndex: pricing.tokenIndex,
+        amount: type === 'fungible' ? decimalToToken(pricing.price, decimals) : pricing.price,
+      }
+      log('Transferring payment for purchasing the app:',
+        `${packageJson.name}@${packageJson.version}`,
+        ', transferData:', transferData)
+      transferred = await firefly.transferTokens(transferData);
+    }
+
     const out = {
       result: 'ok',
-      installed: files.map(f => f.path)
+      installed: files.map(f => f.path),
+      transferred,
     };
 
     res.json(out);
