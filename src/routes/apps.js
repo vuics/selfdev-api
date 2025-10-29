@@ -185,9 +185,12 @@ router.post('/search', checkAuth, async (req, res, next) => {
     const packageJson = parsePackageJson({ files })
     if (packageJson) {
       const { purchased } = await checkOwnership({ user: req.user, packageName: packageJson.name })
+
+      const installed = await App.findOne({ 'package.name': packageJson.name })
       candidates.push({
         package: packageJson,
         purchased,
+        installed,
       })
     }
     res.json(candidates);
