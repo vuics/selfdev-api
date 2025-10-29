@@ -16,6 +16,10 @@ export default mongoose.model(
     },
 
     package: Mixed,
+
+    values: Mixed,
+    mergedValues: Mixed,
+
     agentIds: [{ type: ObjectId, ref: 'Agent'}],
     mapIds: [{ type: ObjectId, ref: 'Map' }],
   })

@@ -23,80 +23,13 @@ import conf from '../conf.js'
 const verbose = Verbose('sd:routes/apps'); verbose('');
 const router = Router();
 
-// async function installApp ({ userId, files, values = '' } = {}) {
-//   const app = new App({
-//     userId,
-//   });
-
-//   // Loop through extracted files and verbose content
-//   for (const file of files) {
-//     if (file.path.endsWith('.json')) {
-//       if (file.path.startsWith('package/hyag/maps/._') ||
-//           file.path.startsWith('package/hyag/agents/._')) {
-//         verbose(`Skip hidden json file: ${file.path}`);
-//         continue
-//       }
-//       let data = null
-//       try {
-//         data = JSON.parse(file.content)
-//       } catch (err) {
-//         throw new Error(`Cannot parse json at ${file.path}: ${err.toString()}`)
-//       }
-
-//       if (file.path === 'package/package.json') {
-//         verbose(`package.json file: ${file.path}\nContent:\n${file.content}\n---`);
-//         app.package = data
-//       } else if (file.path.startsWith('package/hyag/maps/')) {
-//         verbose(`Map file: ${file.path}\nContent:\n${file.content}\n---`);
-//         const map = new Map({
-//           ...data,
-//           userId,
-//           appId: app._id,
-//         })
-//         await map.save()
-//         app.mapIds.push(map._id)
-//       } else if (file.path.startsWith('package/hyag/agents/')) {
-//         verbose(`Agent file: ${file.path}\nContent:\n${file.content}\n---`);
-//         const agent = new Agent({
-//           ...data,
-//           userId,
-//           appId: app._id,
-//         })
-//         await agent.save()
-//         app.agentIds.push(agent._id)
-//       } else {
-//         verbose(`Unknown JSON file: ${file.path}\n---`);
-//       }
-//     } else if (file.path.endsWith('.yaml')) {
-//       data = yaml.load(file.content)
-//       // TODO: load yamls in a similar way as I loaded jsons above
-//       //       Do not repeat yourself.
-//       // load package/hyag/maps/*.yaml
-//       // load package/hyag/agents/*.yaml
-//     } else if (file.path.endsWith('.yaml.template')) {
-//       // TODO: apply nunjucks to the template, then load as yamls
-//       //       use lodash deep merge() to load values file from /package/values.yaml, /package/values.json and values that come as an argument to the function (can be in yaml or json format - you should detect), the argument values has the biggest weight
-//       // load package/hyag/maps/*.yaml.template
-//       // load package/hyag/agents/*.yaml.template
-//     } else if (file.path.endsWith('.json.template')) {
-//       // TODO: apply nunjucks to the template, then load as jsons
-//       //       use lodash deep merge() to load values file from /package/values.yaml, /package/values.json and values that come as an argument to the function (can be in yaml or json format - you should detect)
-//       // load package/hyag/maps/*.json.template
-//       // load package/hyag/agents/*.json.template
-//     } else {
-//       verbose(`File: ${file.path}`);
-//     }
-//   }
-//   await app.save();
-//   return app
-// }
-
-
 nunjucks.configure({ autoescape: false })
+
 
 async function installApp({ userId, files, packageJson, values = '' } = {}) {
   const app = new App({ userId })
   app.package = packageJson
+  app.values = values
 
   // ---- Helpers ----
   const verboseLog = (label, file, content) => verbose(`${label}: ${file}\nContent:\n${content}\n---`)
@@ -136,6 +69,8 @@ async function installApp({ userId, files, packageJson, values = '' } = {}) {
   }
 
   const mergedValues = mergeValues(baseValues, inputValues)
+
+  app.mergedValues = mergedValues
 
   // ---- Reusable loader for YAML/JSON and templates ----
   const loadData = ({ file, isTemplate = false, isYaml = true }) => {
@@ -536,7 +471,7 @@ router.post('/install', checkAuth, async (req, res, next) => {
   let app = null
   try {
     verbose('app install body:', req.body);
-    const { appName } = req.body;
+    const { appName, values } = req.body;
 
     const files = await retrievePackage({ appName })
 
@@ -551,7 +486,7 @@ router.post('/install', checkAuth, async (req, res, next) => {
       await decryptAndExtract({ files, vaultKeyValue })
     }
 
-    app = await installApp({ userId: req.user._id, files, packageJson })
+    app = await installApp({ userId: req.user._id, files, packageJson, values })
 
     let transferred = null, minted = null
     if (seller) {
