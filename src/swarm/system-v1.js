@@ -233,7 +233,7 @@ export default class SystemV1 extends XmppAgent {
       return output
     } catch (err) {
       error('Error propmting SystemV1:', err)
-      return err.toString()
+      return err?.toString() || "Error serving system request"
     }
   }
 }
