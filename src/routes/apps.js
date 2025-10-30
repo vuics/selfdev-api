@@ -86,6 +86,7 @@ async function installApp({ userId, files, packageJson, values = '' } = {}) {
 
   // ---- Save entity helper ----
   const saveEntity = async (Model, data, label) => {
+    delete data._id
     const entity = new Model({
       ...data,
       userId,
@@ -447,10 +448,16 @@ async function purchaseUnlessOwned({ user, packageJson, seller }) {
         tokenIndex: pricing.tokenIndex,
         amount: type === 'fungible' ? decimalToToken(pricing.price, decimals) : pricing.price,
       }
-      log('Transferring payment for purchasing the app:',
-        `${packageJson.name}@${packageJson.version}`,
-        ', transferData:', transferData)
-      transferred = await firefly.transferTokens(transferData);
+      if (seller.address === user.firefly.address) {
+        log('Seller address and user address are the same:', seller.address,
+          '. Skipping payment for the app:', `${packageJson.name}@${packageJson.version}`,
+          ', transferData:', transferData)
+      } else {
+        log('Transferring payment for purchasing the app:',
+          `${packageJson.name}@${packageJson.version}`,
+          ', transferData:', transferData)
+        transferred = await firefly.transferTokens(transferData);
+      }
     }
 
     const mintData = {
