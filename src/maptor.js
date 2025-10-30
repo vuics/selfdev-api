@@ -98,9 +98,27 @@ export async function playEdge ({
 }) {
   const { text, attachments } = sourceNodeData
   const { recipient, condition } = edgeData
+
   const smartText = buildSmartText({ text, getNodes })
+  let safe, satisfied
+  if (edgeData.evaluateOn) {
+    const evaluateOnNode = getNodes().find(n => n.data.uname === edgeData.evaluateOn);
+    const evaluateOnSmartText = buildSmartText({
+      text: evaluateOnNode ? evaluateOnNode.data.text : '',
+      getNodes
+    });
+    [ satisfied, safe ] = checkCondition({
+      condition,
+      text: evaluateOnNode ? evaluateOnSmartText : ''
+    });
+  } else {
+    [ satisfied, safe ] = checkCondition({
+      condition,
+      text: smartText
+    });
+  }
+  // console.log('text:', evaluateOnNode ? evaluateOnNode.data.text : text)
   // console.log('smartText:', smartText)
-  const [ satisfied, safe ] = checkCondition({ condition, text: smartText })
   // console.log('condition:', condition, ', satisfied:', satisfied, ', safe:', safe)
 
   // console.log('playEdge smartText:', smartText, ', satisfied:', satisfied, ', safe:', safe)

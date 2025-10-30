@@ -83,13 +83,14 @@ const MarkerEndSchema = new mongoose.Schema({
 const RequestEdgeDataSchema = new mongoose.Schema({
   recipient: String,   // The agent name, xmpp address of the agent, e.g. agentname@username.x.hyag.ru
   condition: String,   // Regular expresson, the edge gets executed (message send to recipient if the condition is satisfied when applied to the source edge before sending the message to the recipient
-  stroke: String,      // Stroke line color
+  evaluateOn: String,  // Uname of a note node that is used to build smart text to evaluate the condition. By default, the edge source node is used to evaluate the condition.
   satisfied: Boolean,  // If condition is satisfied by applying the condition regex to the source node smart text
   safe: Boolean,       // If the condition regex is safe
   expecting: Boolean,  // Execution is expected, colors edge label yellow
   cursor: Boolean,     // If this edge is being executed (message send to a recipient and waiting for the answer), colors edge label to olive
   reordering: Boolean, // If in reordering mode, colors edge label to blue
   sequence: Number,    // Order number of the edge
+  stroke: String,      // Stroke line color
 }, { _id: false, strict: false })
 
 const RequestEdgeSchema = new mongoose.Schema({
