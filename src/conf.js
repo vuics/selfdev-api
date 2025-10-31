@@ -479,6 +479,14 @@ const conf = {
     lockRefreshSeconds: num(process.env.SWARM_LOCK_REFRESH_SECONDS || 30),
   },
 
+  bridge: {
+    filterConnectors: arr(process.env.BRIDGE_FILTER_ARCHETYPES || ''), // 'matterbridge'
+
+    monitorSeconds: num(process.env.BRIDGE_MONITOR_SECONDS || 60),
+    lockTimeoutSeconds: num(process.env.BRIDGE_LOCK_TIMEOUT_SECONDS || 120),
+    lockRefreshSeconds: num(process.env.BRIDGE_LOCK_REFRESH_SECONDS || 30),
+  },
+
   apps: {
     registryUrl: process.env.APPS_REGISTRY_URL || 'https://verdaccio.hyag.ru',
   },

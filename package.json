@@ -11,7 +11,7 @@
     "workers:scheduler": "NODE_ENV=development DEBUG=sd:* nodemon --exec node -- ./src/workers/scheduler.js",
     "workers:autopayment": "NODE_ENV=production DEBUG=sd:* node ./src/workers/autopayment.js",
     "swarm": "NODE_ENV=development DEBUG=sd:* nodemon --exec node -- ./src/swarm/index.js",
-    "maptrix": "NODE_ENV=development DEBUG=sd:* nodemon --exec node -- ./src/swarm/maptrix-v1.js",
+    "bridge": "NODE_ENV=development DEBUG=sd:* nodemon --exec node -- ./src/bridge/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [

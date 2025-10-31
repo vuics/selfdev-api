@@ -16,7 +16,7 @@ export default mongoose.model(
     },
     appId: { type: ObjectId, ref: 'App' },
 
-    type: String, // whatsapp, telegram, etc.
+    connector: String, // Matterbridge (whatsapp, telegram, etc.)
     deployed: Boolean, // only run the agents with deployed===true
 
     options: {
