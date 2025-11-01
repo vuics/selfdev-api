@@ -15,6 +15,7 @@ import { Verbose, log, warn, error } from '../services.js';
 import User from '../models/user.js'
 import Map from '../models/map.js'
 import Agent from '../models/agent.js'
+import Bridge from '../models/bridge.js'
 import App from '../models/app.js'
 import { vaultClient } from '../vault.js'
 import firefly, { getPoolByIdOrSymbol, decimalToToken, tokenToDecimal } from '../firefly.js'
@@ -101,7 +102,9 @@ async function installApp({ userId, files, packageJson, values = '' } = {}) {
     const { path } = file
 
     // Skip hidden macOS files
-    if (path.startsWith('package/hyag/maps/._') || path.startsWith('package/hyag/agents/._')) {
+    if (path.startsWith('package/hyag/maps/._') ||
+        path.startsWith('package/hyag/agents/._') ||
+        path.startsWith('package/hyag/bridges/._')) {
       verbose(`Skip hidden file: ${path}`)
       continue
     }
@@ -115,6 +118,9 @@ async function installApp({ userId, files, packageJson, values = '' } = {}) {
       } else if (path.startsWith('package/hyag/agents/')) {
         verboseLog('Agent JSON template', path, file.content)
         await saveEntity(Agent, data, 'agent')
+      } else if (path.startsWith('package/hyag/bridges/')) {
+        verboseLog('Bridge JSON template', path, file.content)
+        await saveEntity(Bridge, data, 'bridge')
       }
 
     // --- YAML templates ---
@@ -126,6 +132,9 @@ async function installApp({ userId, files, packageJson, values = '' } = {}) {
       } else if (path.startsWith('package/hyag/agents/')) {
         verboseLog('Agent YAML template', path, file.content)
         await saveEntity(Agent, data, 'agent')
+      } else if (path.startsWith('package/hyag/bridges/')) {
+        verboseLog('Bridge YAML template', path, file.content)
+        await saveEntity(Bridge, data, 'bridge')
       }
 
     // --- Plain JSON files ---
@@ -137,8 +146,9 @@ async function installApp({ userId, files, packageJson, values = '' } = {}) {
       } else if (path.startsWith('package/hyag/agents/')) {
         verboseLog('Agent file', path, file.content)
         await saveEntity(Agent, data, 'agent')
-      } else {
-        verbose(`Unknown JSON file: ${path}`)
+      } else if (path.startsWith('package/hyag/bridges/')) {
+        verboseLog('Bridge file', path, file.content)
+        await saveEntity(Bridge, data, 'bridge')
       }
 
     // --- Plain YAML files ---
@@ -150,6 +160,9 @@ async function installApp({ userId, files, packageJson, values = '' } = {}) {
       } else if (path.startsWith('package/hyag/agents/')) {
         verboseLog('Agent YAML file', path, file.content)
         await saveEntity(Agent, data, 'agent')
+      } else if (path.startsWith('package/hyag/bridges/')) {
+        verboseLog('Bridge YAML file', path, file.content)
+        await saveEntity(Bridge, data, 'bridge')
       }
 
     // --- Other files ---
@@ -178,6 +191,12 @@ async function uninstallApp ({ app }) {
     if (app.agentIds && app.agentIds.length) {
       await Agent.deleteMany({ _id: { $in: app.agentIds } });
       log(`Deleted ${app.agentIds.length} agents`);
+    }
+
+    // Delete bridges
+    if (app.bridgeIds && app.bridgeIds.length) {
+      await Bridge.deleteMany({ _id: { $in: app.bridgeIds } });
+      log(`Deleted ${app.bridgeIds.length} bridges`);
     }
 
     // Delete the app itself
@@ -546,21 +565,25 @@ router.post('/uninstall', checkAuth, async (req, res, next) => {
 async function deployApp({ app, deployed }) {
   if (app) {
     verbose(
-      'Deploying installed app: mapIds:',
-      app.mapIds,
-      ', agentIds:',
-      app.agentIds,
-      'app._id:',
-      app._id
+      'Deploying installed app: mapIds:', app.mapIds,
+      ', agentIds:', app.agentIds,
+      ', bridgeIds:', app.bridgeIds,
+      'app._id:', app._id
     );
 
-    // Update agents instead of deleting
     if (app.agentIds && app.agentIds.length) {
       const result = await Agent.updateMany(
         { _id: { $in: app.agentIds } },
         { $set: { deployed } }
       );
       log(`Updated ${result.modifiedCount} agents with deployed=${deployed}`);
+    }
+    if (app.bridgeIds && app.bridgeIds.length) {
+      const result = await Bridge.updateMany(
+        { _id: { $in: app.bridgeIds } },
+        { $set: { deployed } }
+      );
+      log(`Updated ${result.modifiedCount} bridges with deployed=${deployed}`);
     }
   }
 }

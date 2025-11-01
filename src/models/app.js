@@ -22,6 +22,7 @@ export default mongoose.model(
 
     agentIds: [{ type: ObjectId, ref: 'Agent'}],
     mapIds: [{ type: ObjectId, ref: 'Map' }],
+    bridgeIds: [{ type: ObjectId, ref: 'Bridge' }],
   })
     .plugin(mongooseTimestamp)
 )
