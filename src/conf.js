@@ -480,7 +480,7 @@ const conf = {
   },
 
   bridge: {
-    filterConnectors: arr(process.env.BRIDGE_FILTER_ARCHETYPES || ''), // 'matterbridge'
+    filterConnectors: arr(process.env.BRIDGE_FILTER_ARCHETYPES || ''), // 'messengers'
 
     monitorSeconds: num(process.env.BRIDGE_MONITOR_SECONDS || 60),
     lockTimeoutSeconds: num(process.env.BRIDGE_LOCK_TIMEOUT_SECONDS || 120),

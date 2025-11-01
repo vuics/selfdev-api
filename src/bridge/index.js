@@ -3,7 +3,7 @@ import { inspect } from 'util'
 
 import { log, warn, error, Verbose } from '../services.js'
 import conf, { revealConf } from '../conf.js'
-import Matterbridge from './matterbridge.js'
+import Messengers from './messengers.js'
 import { sleep } from '../utils/helper.js'
 
 import '../mongo.js'
@@ -18,7 +18,7 @@ log('public conf:', inspect(revealConf(), { colors: true, depth: null }))
 
 
 const connectorClasses = {
-  "matterbridge": Matterbridge,
+  "messengers": Messengers,
 }
 
 const runningConnectorBridges = {};
@@ -166,6 +166,7 @@ async function stopBridge({ bridgeId }) {
 // ----------------- Sync and Monitor -----------------
 async function syncBridges() {
   try {
+    // verbose('connectorClasses:', connectorClasses)
     const bridges = await Bridge.find({
       connector: {
         $in: conf.bridge.filterConnectors.length > 0

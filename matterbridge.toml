@@ -46,27 +46,27 @@ enable=true
 # How to get channel
 # https://github.com/42wim/matterbridge/blob/master/matterbridge.toml.sample#L1855
 
-[[gateway.inout]]
-account="xmpp.matterbridge"
-channel="bridge"  # NOTE: matterbridge can only join the room name (without @domain.com)
+  [[gateway.inout]]
+  account="xmpp.matterbridge"
+  channel="bridge"  # NOTE: matterbridge can only join the room name (without @domain.com)
 
-[[gateway.inout]]
-account="xmpp.matter"
-channel="bridge@conference.selfdev-prosody.dev.local"  # NOTE: is needed to create a room on xmpp server
+  [[gateway.inout]]
+  account="xmpp.matter"
+  channel="bridge@conference.selfdev-prosody.dev.local"  # NOTE: is needed to create a room on xmpp server
 
-# [[gateway.inout]]
-# account="telegram.az1_ai_bot"
-# channel="-1002452967040"  # @az1_channel: t.me/az1_channel
-# # The channel is retrieved from the matterbridge logs (see Channel):
-# #     ime="2025-03-16T20:23:05Z" level=debug msg="<= Message is config.Message{Text:"1", Channel:"-1002452967040", Username:"az1_channel", UserID:"-1002452967040", Avatar:"", Account:"telegram.mytelegram", Event:"", Protocol:"", Gateway:"", ParentID:"", Timestamp:time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC), ID:"18", Extra:map[string][]interface {}{}}" func=handleRecv file="bridge/telegram/handlers.go:238" prefix=telegram
+  # [[gateway.inout]]
+  # account="telegram.az1_ai_bot"
+  # channel="-1002452967040"  # @az1_channel: t.me/az1_channel
+  # # The channel is retrieved from the matterbridge logs (see Channel):
+  # #     ime="2025-03-16T20:23:05Z" level=debug msg="<= Message is config.Message{Text:"1", Channel:"-1002452967040", Username:"az1_channel", UserID:"-1002452967040", Avatar:"", Account:"telegram.mytelegram", Event:"", Protocol:"", Gateway:"", ParentID:"", Timestamp:time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC), ID:"18", Extra:map[string][]interface {}{}}" func=handleRecv file="bridge/telegram/handlers.go:238" prefix=telegram
 
-[[gateway.inout]]
-account="telegram.az1_ai_bot"
-channel="1426287173"  # @az1_ai_bot: t.me/az1_ai_bot
-# The channel is retrieved from the matterbridge logs (see Channel):
-#     time="2025-03-16T20:23:39Z" level=debug msg="<= Message is config.Message{Text:"2", Channel:"1426287173", Username:"artemarakcheev", UserID:"1426287173", Avatar:"", Account:"telegram.mytelegram", Event:"", Protocol:"", Gateway:"", ParentID:"", Timestamp:time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC), ID:"382", Extra:map[string][]interface {}{}}" func=handleRecv file="bridge/telegram/handlers.go:238" prefix=telegram
+  [[gateway.inout]]
+  account="telegram.az1_ai_bot"
+  channel="1426287173"  # @az1_ai_bot: t.me/az1_ai_bot
+  # The channel is retrieved from the matterbridge logs (see Channel):
+  #     time="2025-03-16T20:23:39Z" level=debug msg="<= Message is config.Message{Text:"2", Channel:"1426287173", Username:"artemarakcheev", UserID:"1426287173", Avatar:"", Account:"telegram.mytelegram", Event:"", Protocol:"", Gateway:"", ParentID:"", Timestamp:time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC), ID:"382", Extra:map[string][]interface {}{}}" func=handleRecv file="bridge/telegram/handlers.go:238" prefix=telegram
 
-[[gateway.inout]]
-account="discord.selfdev_bot"
-channel="general"
+  [[gateway.inout]]
+  account="discord.selfdev_bot"
+  channel="general"
 
