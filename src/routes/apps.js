@@ -211,7 +211,19 @@ async function retrievePackage({ appName }) {
   try {
     // Split appName into package and version
     let [pkg, version] = appName.split('@');
-    version = version || 'latest'; // default to 'latest' if no version provided
+
+    // version = version || 'latest'; // default to 'latest' if no version provided
+    //
+    // NOTE: Always install the latest version.
+    //
+    //       What if the price of the package will increase significantly?
+    //       Then the users could install earlier version with cheaper price,
+    //       get the HYAGP token (purchase license) for it, and then upgrade
+    //       with the token for free.
+    //
+    //       We always install packages at their latest price.
+    //
+    version = 'latest';
 
     // If version is "latest", fetch metadata to get the actual version number
     if (version === 'latest') {

@@ -7,12 +7,7 @@ COPY package*.json ./
 RUN npm install
 COPY . .
 
-COPY ./matterbridge.toml /etc/matterbridge/matterbridge.toml
-
-# Keep container running and interactive
-# ENTRYPOINT ["/bin/sh"]
-# CMD ["-c", "tail -f /dev/null"]
-ENTRYPOINT ["npm"]
-
 # EXPOSE 6369
+
+ENTRYPOINT ["npm"]
 CMD ["run", "bridge"]

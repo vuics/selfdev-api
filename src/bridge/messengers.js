@@ -9,6 +9,7 @@ import conf from '../conf.js'
 
 const verbose = Verbose('sd:bridge/messengers'); verbose('')
 
+nunjucks.configure({ autoescape: false })
 
 const matterbridgeTemplate = `
 [general]
@@ -62,7 +63,10 @@ async function generateMatterbridgeToml({ filename, messengers }) {
     verbose('matterbridgeTemplate:', matterbridgeTemplate)
     verbose('messengers:', messengers)
     const renderedToml = nunjucks.renderString(matterbridgeTemplate, messengers);
-    const compactToml = renderedToml.replace(/^\s*$/gm, '');  // Remove all empty lines
+
+    // NOTE: Removes empty lines unless the next non-empty line starts with [,
+    //       meaning section headers will stay visually separated.
+    const compactToml = renderedToml.replace(/^(?!\n*\[)\s*\n/gm, '');
     verbose('compactToml:', compactToml)
 
     await fs.writeFile(filename, renderedToml, 'utf-8');
@@ -77,6 +81,23 @@ export default class Messengers extends Connector {
     super(args)
     // const { bridge } = args
     verbose('Messengers constructed')
+    this.logs = ''
+    this.collectLogs = true
+  }
+
+  async saveLogs () {
+    try {
+      const bridgeDoc = await Bridge.findById(this.bridge._id)
+      if (bridgeDoc) {
+        bridgeDoc.logs = this.logs
+        await bridgeDoc.save()
+        log('Logs saved for bridge:', this.bridge._id, ":", this.bridge.options.name)
+        // verbose('bridgeDoc:', bridgeDoc)
+        // verbose('bridgeDoc.logs:', bridgeDoc.logs)
+      }
+    } catch (err) {
+      error('Error saving logs:', err)
+    }
   }
 
   async start () {
@@ -88,7 +109,7 @@ export default class Messengers extends Connector {
       error('Error starting Messengers:', err)
     }
 
-    const filename = '/etc/matterbridge/matterbridge.toml'
+    const filename = `/etc/matterbridge/matterbridge-${this.bridge._id.toString()}.toml`
     await generateMatterbridgeToml({
       filename,
       messengers: this.bridge.options.messengers,
@@ -96,11 +117,20 @@ export default class Messengers extends Connector {
 
     const command = '/bin/matterbridge';
     const args = ['-conf', filename];
-    let logs = '';
+
+    this.collectLogs = true
+    this.logs = '';
+
 
     this.matterbridge = spawn(command, args, {
       // stdio: 'inherit'
     });
+
+    setTimeout(async () => {
+      await this.saveLogs()
+      this.collectLogs = false
+    }, 10000)
+
     // Handle errors
     this.matterbridge.on('error', (err) => {
       error('Failed to start matterbridge:', err);
@@ -112,25 +142,23 @@ export default class Messengers extends Connector {
       } else {
         log(`Matterbridge was killed by signal ${signal}`);
       }
-      const bridgeDoc = await Bridge.findById(this.bridge._id)
-      if (bridgeDoc) {
-        bridgeDoc.logs = logs
-        await bridgeDoc.save()
-        verbose('bridgeDoc:', bridgeDoc)
-        verbose('bridgeDoc.logs:', bridgeDoc.logs)
-      }
+      await this.saveLogs()
     });
     // Capture stdout
     this.matterbridge.stdout.on('data', (data) => {
-      const text = data.toString();
-      logs += text;
-      console.log('stdout:', text); // optional: still print to console
+      if (this.collectLogs) {
+        const text = data.toString();
+        this.logs += text;
+        console.log('stdout:', text); // optional: still print to console
+      }
     });
     // Capture stderr
     this.matterbridge.stderr.on('data', (data) => {
-      const text = data.toString();
-      logs += text;
-      console.error('stderr:', text); // optional: still print to console
+      if (this.collectLogs) {
+        const text = data.toString();
+        this.logs += text;
+        console.error('stderr:', text); // optional: still print to console
+      }
     });
   }
 
