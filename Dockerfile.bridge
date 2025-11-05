@@ -7,9 +7,6 @@ COPY package*.json ./
 RUN npm install
 COPY . .
 
-# FIXME: replace whisper with speaches
-# RUN chmod +x whisper-download.exp && ./whisper-download.exp
-
 # EXPOSE 6369
 
 ENTRYPOINT ["npm"]

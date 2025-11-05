@@ -1,21 +1,14 @@
 import modesl from 'modesl'
 import fsExtra from 'fs-extra'
 import path from 'path'
-// import { v4 as uuidv4 } from 'uuid'
 import dotenv from 'dotenv'
-import { promises as fsPromises } from 'fs'
+import fs from 'fs'
 import os from 'os'
 import { exec } from 'node:child_process'
 import { client, xml } from '@xmpp/client'
-// import { exec } from 'child_process';
 import FormData from 'form-data';
 import axios from 'axios';
 import { randomUUID } from 'crypto'
-
-// TODO: replace the gtts and whisper with speaches
-import Gtts from 'gtts'
-// TODO: remove
-// import { whisper } from 'whisper-node'
 
 import { log, warn, error, Verbose } from '../services.js'
 import Connector from './connector.js'
@@ -26,25 +19,6 @@ import conf, { bool, json, num, arr } from '../conf.js'
 
 const verbose = Verbose('sd:bridge/phone'); verbose('')
 
-
-// FIXME: remove comment
-// npm i fs-extra@11.3.0 gtts@0.2.1 modesl@1.2.1 path@0.12.7 whisper-node@1.1.1
-
-
-// FIXME: replace
-// const result = require('dotenv').config()
-// console.log('result:', result)
-// if (result.error) {
-//   result.error.code === 'ENOENT'
-//     ? console.log('.env file is omitted')
-//     : console.error('.env error:', result.error)
-// }
-// console.log('process.env:', process.env)
-
-// const bool = (val) => ['true', '1', true, 1].includes(val)
-// const json = (val) => val && JSON.parse(val)
-// const num = (val) => val ? Number(val) : (val === 0 ? 0 : undefined)
-// const arr = (str) => str ? str.split(',') : []
 
 // Allow insecure certificates (without showing warning)
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
@@ -77,7 +51,7 @@ const SAVE_TTS_FILE = bool(process.env.SAVE_TTS_FILE || true)
 
 const WHISPER_MODEL = process.env.WHISPER_MODEL || 'tiny' // Use tiny model for speed (options: tiny, base, small, medium, large)
 const WHISPER_LANGUAGE = process.env.WHISPER_LANGUAGE || 'auto' // Auto-detect language
-const TTS_ENGINE = process.env.TTS_ENGINE || "gtts"    // options "say" or "gtts"
+// const TTS_ENGINE = process.env.TTS_ENGINE || "gtts"    // options "say" or "gtts"
 const SMS_ME = arr(process.env.SMS_ME || '9639@192.168.50.223,450905@paris1.voip.ms')
 // const SMS_ME = ['selfdev-voip@192.168.50.223', '450905@paris1.voip.ms']
 // const SMS_ME = ['1000@192.168.50.223', '450905@paris1.voip.ms']
@@ -106,6 +80,9 @@ console.log('config:', config)
 
 const SPEACHES_BASE_URL = process.env.SPEACHES_BASE_URL || 'http://selfdev-speech.dev.local:8372';
 const TRANSCRIPTION_MODEL_ID = process.env.TRANSCRIPTION_MODEL_ID || 'Systran/faster-distil-whisper-small.en';
+const SPEECH_MODEL_ID = process.env.SPEECH_MODEL_ID || 'speaches-ai/Kokoro-82M-v1.0-ONNX'
+const VOICE_ID = process.env.VOICE_ID || 'af_heart'
+
 
 
 // Make sure the directory exists
@@ -120,13 +97,6 @@ try {
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
-
-
-// Handle application shutdown
-// process.on('SIGINT', function() {
-// });
-
-
 
 export default class Phone extends Connector {
   constructor (args) {
@@ -277,7 +247,7 @@ export default class Phone extends Connector {
 
       const removeFile = async (filePath) => {
         try {
-          await fsPromises.unlink(filePath);
+          await fs.promises.unlink(filePath);
           console.log(`Successfully removed file: ${filePath}`);
         } catch (err) {
           if (err.code === 'ENOENT') {
@@ -344,39 +314,44 @@ export default class Phone extends Connector {
 
       const ttsToFreeswitch = async ({ text, parkUuid }) => {
         try {
-          const ttsFilename = `tts_${randomUUID()}.wav`
+          const ttsFilename = `tts_${randomUUID()}.wav`;
           const ttsFile = path.join(RECORDINGS_DIR, ttsFilename);
-          console.log('TTS ttsFile:', ttsFile)
           const ttsExternalFile = path.join(RECORDINGS_EXTERNAL_DIR, ttsFilename);
-          console.log('TTS ttsExternalFile:', ttsFile)
 
-          if (TTS_ENGINE === "say") {
-            await sayTTS(text, 'Alex', ttsFile)
-          } else if (TTS_ENGINE === "gtts") {
-            await new Promise((resolve, reject) => {
-              const gtts = new Gtts(text, 'en');
-              gtts.save(ttsFile, (err) => {
-                if (err) { return reject(err) }
-                resolve()
-              })
-            });
-          } else {
-            throw Error(`Unknown TTS_ENGINE: ${TTS_ENGINE}`)
-          }
+          console.log('🔊 Generating TTS:', { ttsFile, ttsExternalFile });
 
-          console.log('TTS generation complete')
-          // await executeCommand(parkUuid, 'playback', ttsFile);
+          // Generate TTS with Speaches.ai
+          const response = await axios.post(
+            `${SPEACHES_BASE_URL}/v1/audio/speech`,
+            {
+              input: text,
+              model: SPEECH_MODEL_ID,
+              voice: VOICE_ID,
+              response_format: 'wav',
+            },
+            {
+              responseType: 'arraybuffer',
+              headers: { 'Content-Type': 'application/json' },
+            }
+          );
+
+          // Save audio to file
+          await fs.promises.writeFile(ttsFile, Buffer.from(response.data));
+          console.log('TTS generation complete:', ttsFile);
+
+          // Play it via FreeSWITCH
           await executeCommand(parkUuid, 'playback', ttsExternalFile);
 
+          // Optionally delete file after playback
           if (!SAVE_TTS_FILE) {
-            await sleep(1000)
+            await sleep(1000);
             await removeFile(ttsFile);
+            console.log('Temporary TTS file removed');
           }
-
         } catch (err) {
-          console.error('TTS generation failed:', err)
+          console.error('TTS generation failed:', err);
         }
-      }
+      };
 
       const executeCommand = async (uuid, command, args) => {
         return new Promise((resolve, reject) => {
@@ -497,93 +472,7 @@ export default class Phone extends Connector {
         }
       }
 
-      //async function transcribeAudio(audioFilePath) {
-      //  console.log(`Starting transcription of ${audioFilePath}`);
-
-      //  try {
-      //    // Check if the file exists
-      //    if (!await fsExtra.pathExists(audioFilePath)) {
-      //      throw new Error(`Audio file not found: ${audioFilePath}`);
-      //    }
-
-      //    // Check file stats
-      //    const stats = await fsExtra.stat(audioFilePath);
-      //    console.log(`Audio file size: ${stats.size} bytes`);
-
-      //    if (stats.size === 0) {
-      //      return 'Empty audio file, no transcription possible.';
-      //    }
-
-      //    // First, normalize the audio file to ensure compatibility with whisper-node
-      //    const normalizedPath = audioFilePath.replace('.wav', '_normalized.wav');
-
-      //    try {
-      //      // Create a 16kHz mono WAV file which works better with Whisper
-      //      await new Promise((resolve, reject) => {
-      //        exec(`ffmpeg -y -i "${audioFilePath}" -ar 16000 -ac 1 "${normalizedPath}"`, (error) => {
-      //          if (error) {
-      //            reject(new Error(`Failed to normalize audio: ${error.message}`));
-      //          } else {
-      //            resolve();
-      //          }
-      //        });
-      //      });
-
-      //      console.log(`Audio normalized to ${normalizedPath}`);
-
-      //      // TODO: Do not use the whisper, but use speaches instaed
-      //      //
-      //      // // Configure whisper options
-      //      // const options = {
-      //      //   modelName: WHISPER_MODEL,
-      //      //   whisperOptions: {
-      //      //     language: WHISPER_LANGUAGE,
-      //      //     gen_file_txt: false,
-      //      //     gen_file_subtitle: false,
-      //      //     gen_file_vtt: false,
-      //      //     word_timestamps: false // Disable word timestamps for better overall transcription
-      //      //   }
-      //      // };
-      //      // console.log(`Transcribing with whisper using options:`, options)
-
-      //      // // Perform the transcription
-      //      // const transcript = await whisper(normalizedPath, options);
-      //      // console.log(`Whisper transcript:`, transcript);
-
-      //      if (!SAVE_NORMALIZATION) {
-      //        await removeFile(normalizedPath);
-      //      }
-
-      //      return JSON.stringify(transcript)
-      //    } catch (error) {
-      //      console.error(`Error during transcription process: ${error.message}`);
-
-      //      // If normalization or transcription fails, try with the original file
-      //      console.log(`Attempting transcription with original file as fallback`);
-
-      //      // TODO: Use speaches instead of whisper
-      //      //
-      //      // const options = {
-      //      //   modelName: "tiny",
-      //      //   whisperOptions: {
-      //      //     language: 'auto'
-      //      //   }
-      //      // };
-      //      // const transcript = await whisper(audioFilePath, options);
-      //      // console.log(`Whisper fallback transcript:`, transcript);
-      //      return JSON.stringify(transcript)
-      //    }
-      //  } catch (error) {
-      //    console.error(`Transcription error: ${error.message}`);
-      //    return `Transcription error: ${error.message}`;
-      //  }
-      //}
-
-
-
-      /**
-       * Send audio file to Speaches.ai container for transcription
-       */
+      // Send audio file to Speaches.ai container for transcription
       const sendToSpeaches = async (filePath) => {
         console.log(`Sending ${filePath} to Speaches.ai for transcription...`);
 
@@ -612,9 +501,7 @@ export default class Phone extends Connector {
         }
       }
 
-      /**
-       * Transcribe an audio file (uses ffmpeg normalization + Speaches.ai)
-       */
+      // Transcribe an audio file (uses ffmpeg normalization + Speaches.ai)
       const transcribeAudio = async (audioFilePath) => {
         console.log(`Starting transcription of ${audioFilePath}`);
 
@@ -764,11 +651,6 @@ export default class Phone extends Connector {
         domain: config.domain,
         username: config.jid.split('@')[0],
         password: config.password,
-
-        // FIXME: delete, it does not work
-        // tls: {
-        //   rejectUnauthorized: false
-        // }
       });
 
       // Track state
@@ -963,4 +845,3 @@ export default class Phone extends Connector {
     verbose('Phone stopped')
   }
 }
-
