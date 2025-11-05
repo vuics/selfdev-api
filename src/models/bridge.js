@@ -103,9 +103,6 @@ const PhoneSchema = new mongoose.Schema({
   altHost: String,
   altUsername: String,
 
-  xmppJid: String,
-  xmppPassword: String,
-
   recipient: String,
   recipientNickname: String,
   joinRoom: String,

@@ -60,6 +60,7 @@ export default class XmppAgent {
         if (!mentioned) { return }
 
         const replyFunc = async ({ content }) => {
+          if (!content) { return }
           verbose('room replyFunc content:', content)
           const [ roomJid ] = from.split('/')
           const [ , mucHost ] = roomJid.split('@')
@@ -141,7 +142,7 @@ export default class XmppAgent {
     }
   }
 
-  async chat({ prompt, replyFunc=()=>{}} = {}) {
+  async chat({ prompt, replyFunc=()=>{} } = {}) {
     // replyFunc({ content: prompt })
     return prompt
   }

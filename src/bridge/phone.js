@@ -13,6 +13,7 @@ import { randomUUID } from 'crypto'
 import { log, warn, error, Verbose } from '../services.js'
 import Connector from './connector.js'
 import Bridge from '../models/bridge.js'
+import XmppAgent from '../swarm/xmpp-agent.js'
 import conf from '../conf.js'
 
 const verbose = Verbose('sd:bridge/phone'); verbose('')
@@ -39,10 +40,25 @@ export default class Phone extends Connector {
     super(args)
     // const { bridge } = args
     verbose('Phone constructed')
+
+    this.xmppAgent = new XmppAgent({
+      agent: {
+        options: {
+          name: this.bridge.options.name,
+          joinRooms: [this.bridge.options.phone.joinRoom],
+        },
+        userId: this.bridge.userId,
+      },
+      handleChat: this.bridge.options.phone.enablePersonal,
+      handleRooms: this.bridge.options.phone.enableRoom,
+    })
+
+    // TODO: move to parent class
     // this.logs = ''
     // this.collectLogs = true
   }
 
+  // TODO: move to parent class
   // async saveLogs () {
   //   try {
   //     const bridgeDoc = await Bridge.findById(this.bridge._id)
@@ -65,7 +81,6 @@ export default class Phone extends Connector {
       this.freeswitchOnline = false;
       this.parkUuid = null
       this.sendSmsCmdPrefix = null
-      this.xmppOnline = false;
 
       // Create a FreeSWITCH connection
       log(`Connecting to FreeSwitch on ${conf.freeswitch.host}:${conf.freeswitch.port}`);
@@ -372,14 +387,21 @@ export default class Phone extends Connector {
                 await removeFile(recordingFile);
               }
 
-              log('xmppOnline:', this.xmppOnline)
-              if (this.xmppOnline && this.bridge.options.phone.enablePersonal) {
+              if (this.bridge.options.phone.enablePersonal) {
                 verbose('sending personal message:', text)
-                await sendPersonalMessage({ message: text });
+                await this.xmppAgent.xmppClient.sendPersonalMessage({
+                  recipient: this.bridge.options.phone.recipient,
+                  prompt: text,
+                })
               }
-              if (this.xmppOnline && this.bridge.options.phone.enableRoom) {
+              if (this.bridge.options.phone.enableRoom) {
                 verbose('sending group message:', text)
-                await sendGroupChatMessage({ message: text });
+                await this.xmppAgent.xmppClient.sendRoomMessage({
+                  room: this.bridge.options.phone.joinRoom,
+                  recipient: this.bridge.options.phone.recipientNickname,
+                  prompt: text,
+                  mucHost: conf.xmpp.mucHost,
+                })
               }
             } catch (err) {
               error('Error transcribing audio and sending it:', err);
@@ -507,107 +529,39 @@ export default class Phone extends Connector {
           const sipBody = extractSIPBody(body)
           log('sipBody:', sipBody)
 
-          if (this.xmppOnline && this.bridge.options.phone.enablePersonal) {
-            await sendPersonalMessage({ message: sipBody });
+          if (this.bridge.options.phone.enablePersonal) {
+            await this.xmppAgent.xmppClient.sendPersonalMessage({
+              recipient: this.bridge.options.phone.recipient,
+              prompt: text,
+            })
           }
-          if (this.xmppOnline && this.bridge.options.phone.enableRoom) {
-            await sendGroupChatMessage({ message: sipBody });
+          if (this.bridge.options.phone.enableRoom) {
+            await this.xmppAgent.xmppClient.sendRoomMessage({
+              room: this.bridge.options.phone.joinRoom,
+              recipient: this.bridge.options.phone.recipientNickname,
+              prompt: sipBody,
+              mucHost: conf.xmpp.mucHost,
+            })
           }
         } catch (err) {
           error('Error processing sms:', err)
         }
       });
 
-
-      verbose('xmpp service:', conf.xmpp.websocketUrl)
-      verbose('xmpp domain:', conf.xmpp.host)
-      verbose('xmpp username:', this.bridge.options.phone.xmppJid.split('@')[0])
-      verbose('xmpp password:', this.bridge.options.phone.xmppPassword)
-
-      // Initialize XMPP client
-      this.xmpp = client({
-        service: conf.xmpp.websocketUrl,
-        domain: conf.xmpp.host,
-        username: this.bridge.options.phone.xmppJid.split('@')[0],
-        password: this.bridge.options.phone.xmppPassword,
-      });
-
-      // Track state
-      this.nickname = null;
-      this.clientFullJid = null; // Store the full JID including resource
-
-      // Handle online event
-      this.xmpp.on('online', async (jid) => {
-        log(`Connected as ${jid.toString()}`);
-        this.xmppOnline = true
-        this.nickname = this.bridge.options.phone.xmppJid.split('@')[0];
-        this.clientFullJid = jid.toString(); // Store the full JID
-
-        // Get roster (contact list)
-        await this.xmpp.send(xml('iq', { type: 'get', id: 'roster_1' },
-          xml('query', { xmlns: 'jabber:iq:roster' })
-        ));
-        log('Requested roster');
-
-        // Send initial presence to let the server know we're online
-        this.xmpp.send(xml('presence'));
-        log('Sent initial presence');
-
-        // Join group chat and continue if enabled
-        if (this.bridge.options.phone.enableRoom) {
-          await joinGroupChat();
-        }
-      });
-
-      // Handle incoming stanzas
-      this.xmpp.on('stanza', async (stanza) => {
-        // For debugging specific stanzas
-        // log('Got stanza:', stanza.toString());
-
-        // Handle roster responses
-        if (stanza.is('iq') && stanza.attrs.type === 'result') {
-          const query = stanza.getChild('query', 'jabber:iq:roster');
-          if (query) {
-            const items = query.getChildren('item');
-            if (items && items.length) {
-              log('Roster received, contacts:', items.length);
-            }
-          }
-        }
-
-        // Skip non-message stanzas
-        if (!stanza.is('message')) return;
-
-        const body = stanza.getChildText('body');
-        if (!body) return;
-
-        const from = stanza.attrs.from;
-        const type = stanza.attrs.type;
-
-        if (type === 'chat' || type === 'normal' || !type) {
-          // Handle personal messages
-          log(`Personal message response from ${from}: ${body}`);
-        } else if (type === 'groupchat') {
-          // Handle group chat messages
-          // Skip our own messages
-          if (from.includes(`/${this.nickname}`)) { return; }
-
-          // Skip historical messages
-          const delay = stanza.getChild('delay');
-          if (delay) return;
-
-          log(`Group chat message from ${from}: ${body}`);
-        }
-
+      await this.xmppAgent.start()
+      this.xmppAgent.chat = async ({ prompt, replyFunc=()=>{} } = {}) => {
+        verbose('Phone received chat with prompt:', prompt)
         if (this.freeswitchOnline && this.parkUuid) {
+          verbose('ttsToFreeswitch')
           await ttsToFreeswitch({
-            text: body,
+            text: prompt,
             parkUuid: this.parkUuid,
           })
         }
 
         if (this.freeswitchOnline && this.sendSmsCmdPrefix) {
-          const text = body.replace(/[\r\n]+/g, ' ')
+          verbose('sendSms')
+          const text = prompt.replace(/[\r\n]+/g, ' ')
           const cmd = `${this.sendSmsCmdPrefix}${text}`;
           log(`Sending agentic reply sms: ${cmd}`);
           this.conn.api(cmd, (res) => {
@@ -615,89 +569,8 @@ export default class Phone extends Connector {
             this.sendSmsCmdPrefix = null
           });
         }
-      });
-
-      // Handle errors
-      this.xmpp.on('error', (err) => {
-        error('XMPP error:', err);
-      });
-
-      // Handle disconnection
-      this.xmpp.on('close', () => {
-        log('Connection closed');
-      });
-
-      // Send a personal message
-      const sendPersonalMessage = async ({ message }) => {
-        log(`Sending personal message to ${this.bridge.options.phone.recipient}...`);
-        const messageBody = message
-
-        // Send with more complete attributes
-        const messageXml = xml(
-          'message',
-          {
-            type: 'chat',
-            to: this.bridge.options.phone.recipient,
-            from: this.clientFullJid,
-            id: randomUUID()
-          },
-          xml('active', { xmlns: 'http://jabber.org/protocol/chatstates' }),
-          xml('body', {}, messageBody)
-        );
-
-        await this.xmpp.send(messageXml);
-        log('Personal message sent:', messageBody);
+        return ''
       }
-
-      // Join group chat and send a message with mention
-      const joinGroupChat = async () => {
-        const roomJid = `${this.bridge.options.phone.joinRoom}@${conf.xmpp.mucHost}`;
-
-        log(`Joining group chat ${roomJid} as ${this?.nickname || '(?)'}...`);
-
-        // Join room with no history
-        const presence = xml(
-          'presence',
-          { to: `${roomJid}/${this.nickname}` },
-          xml('x', { xmlns: 'http://jabber.org/protocol/muc' },
-            xml('history', { maxstanzas: '0', maxchars: '0' })
-          )
-        );
-
-        await this.xmpp.send(presence);
-        log('Joined group chat');
-      }
-
-      // Send a message with a mention to the group chat
-      const sendGroupChatMessage = async ({ message }) => {
-        log(`Sending message with proper mention format...`);
-        const roomJid = `${this.bridge.options.phone.joinRoom}@${conf.xmpp.mucHost}`;
-        const messageBody = `@${this.bridge.options.phone.recipientNickname} ${message}`;
-
-        const messageXml = xml(
-          'message',
-          {
-            type: 'groupchat',
-            to: roomJid,
-            id: randomUUID(),
-            'xml:lang': 'en'
-          },
-          xml('body', {}, messageBody),
-          xml('reference', {
-            xmlns: 'urn:xmpp:reference:0',
-            type: 'mention',
-            begin: '0',
-            end: this.bridge.options.phone.recipientNickname.length + 1,
-            uri: `xmpp:${this.bridge.options.phone.recipientNickname}@${conf.xmpp.mucHost}/${this.bridge.options.phone.recipientNickname}`
-          })
-        );
-
-        await this.xmpp.send(messageXml);
-        log('Message with mention sent:', messageBody);
-      }
-
-      log(`Connecting to XMPP on ${conf.xmpp.websocketUrl}, domain: ${conf.xmpp.host}.`);
-      this.xmpp.start().catch(error);
     } catch (err) {
       error('Error starting Phone:', err)
     }
@@ -710,8 +583,7 @@ export default class Phone extends Connector {
     this.conn.disconnect();
     this.freeswitchOnline = false;
     log('Disconnecting from XMPP');
-    this.xmpp.stop().catch(error);
-    this.xmppOnline = false;
+    await this.xmppAgent.stop()
 
     verbose('Phone stopped')
   }
