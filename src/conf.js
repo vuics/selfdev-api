@@ -502,6 +502,9 @@ const conf = {
     sshHost: process.env.FREESWITCH_SSH_HOST || '192.168.50.100',
     sshUsername: process.env.FREESWITCH_SSH_USERNAME || '(TBS)',
     sshPassword: process.env.FREESWITCH_SSH_PASSWORD || '(TBS)',
+
+    reloadxml: bool(process.env.FREESWITCH_RELOAD_XML || false),
+    restartSofia: bool(process.env.FREESWITCH_RELOAD_XML || false),
   },
 
   speech: {

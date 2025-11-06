@@ -127,210 +127,6 @@ const sipProfileTemplate = `
 </include>
 `
 
-///////////////////////////////
-
-// // NOTE: You should turn on VPN to make it work
-// const eventSocketTemplate = `
-// <configuration name="event_socket.conf" description="Socket Client">
-//   <settings>
-//     <param name="nat-map" value="false"/>
-
-//     <!-- <param name="listen-ip" value="::"/> -->
-//     <param name="listen-ip" value="0.0.0.0"/>
-//     <!-- <param name="listen-port" value="8021"/> -->
-//     <param name="listen-port" value="8022"/>
-//     <param name="password" value="ClueCon"/>
-
-//     <!-- NOTE: Enable/uncomment for selfdev-bridge, disable/comment for selfdev-voip -->
-//     <param name="apply-inbound-acl" value="localnet.auto"/>
-
-//     <!-- <param name="apply-inbound-acl" value="false"/> -->
-//     <!--<param name="apply-inbound-acl" value="loopback.auto"/>-->
-//     <!--<param name="stop-on-bind-error" value="true"/>-->
-//   </settings>
-
-//   <!-- (alphara: added the acl tag -->
-//   <acl>
-//     <node type="allow" cidr="127.0.0.1/32"/>
-//     <node type="allow" cidr="192.168.50.100/24"/>  <!-- Add this line -->
-//     <!-- <node type="allow" cidr="172.0.0.0/24"/>     <!-1- allow your Docker network -1-> -->
-//     <!-- <node type="allow" cidr="91.134.0.0/16"/> -->
-//     <node type="allow" cidr="0.0.0.0/0"/>
-
-//     <!-- Add any other IPs that need access -->
-//   </acl>
-
-// </configuration>
-// `
-
-// const dialplanDefaultTemplate =`
-// <include>
-
-//     <extension name="selfdev-voip">
-//       <condition field="destination_number" expression="^(selfdev-voip)$">
-//         <action application="set" data="absolute_codec_string=PCMU"/>
-//         <action application="set" data="RECORD_STEREO=true"/>
-//         <action application="set" data="record_sample_rate=16000"/>
-//         <action application="set" data="record_channels=1"/>
-//         <action application="set" data="record_read_only=false"/>
-//         <action application="set" data="record_write_only=false"/>
-//         <action application="answer"/>
-//         <action application="park"/>
-//       </condition>
-//     </extension>
-
-//     <extension name="echo_playback">
-//       <condition field="destination_number" expression="^(echo)$">
-//         <action application="answer"/>
-//         <action application="sleep" data="1000"/>
-
-//         <action application="set" data="RECORD_STEREO=false"/>
-//         <action application="set" data="record_temp_path=/tmp/echo_\${uuid}.wav"/>
-
-//         <!-- Start full session recording -->
-//         <action application="record_session" data="\${record_temp_path}"/>
-
-//         <!-- Record for 5 seconds -->
-//         <action application="sleep" data="5000"/>
-
-//         <!-- Stop recording manually -->
-//         <action application="stop_record_session"/>
-
-//         <!-- Playback the recorded voice -->
-//         <action application="playback" data="\${record_temp_path}"/>
-
-//         <action application="hangup"/>
-//       </condition>
-//     </extension>
-
-//     <extension name="voicemail_test">
-//       <condition field="destination_number" expression="^(voicemail)$">
-//         <action application="set" data="absolute_codec_string=PCMU"/>
-//         <action application="set" data="RECORD_STEREO=true"/>
-//         <action application="set" data="record_sample_rate=16000"/>
-//         <action application="set" data="record_channels=1"/>
-//         <action application="set" data="playback_terminators=#"/>
-//         <action application="set" data="record_read_only=false"/>
-//         <action application="set" data="record_write_only=false"/>
-//         <action application="answer"/>
-//         <action application="sleep" data="1000"/>
-//         <action application="playback" data="ivr/ivr-welcome_to_freeswitch.wav"/>
-//         <action application="say" data="en current_time pronounced \${strftime(%H:%M)}"/>
-//         <action application="say" data="en current_date pronounced \${strftime(%Y-%m-%d)}"/>
-//         <action application="park"/>
-//         <!-- <action application="record" data="/tmp/voicemail_\${uuid}.wav 60 2 5"/> -->
-//         <!-- <action application="log" data="NOTICE ***** VOICEMAIL RECORDING COMPLETE: /tmp/voicemail_\${uuid}.wav *****"/> -->
-//         <!-- <action application="hangup"/> -->
-//       </condition>
-//     </extension>
-
-//     <extension name="my_number_call">
-//       <condition field="destination_number" expression="^(450905)$">
-//         <action application="answer"/>
-//         <action application="playback" data="{loops=1}tone_stream://path=\${conf_dir}/tetris.ttml"/>
-//         <action application="sleep" data="1000"/>
-//         <action application="playback" data="ivr/ivr-welcome_to_freeswitch.wav"/>
-//         <action application="playback" data="ivr/ivr-record_message.wav"/>
-//         <action application="park"/>
-//       </condition>
-//     </extension>
-
-//     <extension name="audio_test">
-//       <condition field="destination_number" expression="^(test)$">
-//         <action application="answer"/>
-//         <action application="sleep" data="1000"/>
-//         <action application="playback" data="tone_stream://%(10000,0,350,440)"/>
-//         <action application="echo"/>
-//         <action application="hangup"/>
-//       </condition>
-//     </extension>
-
-//     <extension name="simple_test">
-//       <condition field="destination_number" expression="^(test123)$">
-//         <action application="answer"/>
-//         <action application="sleep" data="1000"/>
-//         <action application="playback" data="tone_stream://%(2000,0,350,440)"/>
-//         <action application="hangup"/>
-//       </condition>
-//     </extension>
-
-//     <extension name="audio_file_test">
-//       <condition field="destination_number" expression="^(test456)$">
-//         <action application="answer"/>
-//         <action application="sleep" data="1000"/>
-//         <action application="playback" data="/opt/homebrew/Cellar/freeswitch/1.10.12/share/freeswitch/sounds/en/us/callie/conference/8000/conf-alone.wav"/>
-//         <action application="hangup"/>
-//       </condition>
-//     </extension>
-
-// </include>
-// `
-
-// const dialplanPublicTemplate =`
-// <include>
-//   <extension name="my_number_call">
-//     <condition field="destination_number" expression="^(450905)$">
-//       <action application="answer"/>
-//       <action application="playback" data="{loops=1}tone_stream://path=\${conf_dir}/tetris.ttml"/>
-//       <action application="sleep" data="1000"/>
-//       <action application="park"/>
-//     </condition>
-//   </extension>
-// </include>
-// `
-
-// // TODO: try with:
-// //   <user id="{{ name }}_user">
-// const directoryUserTemplate = `
-// <include>
-//   <user id="9639">
-//     <params>
-//       <param name="password" value="1234"/>
-//       <param name="vm-password" value="9639"/>
-//     </params>
-//     <variables>
-//       <variable name="accountcode" value="9639"/>
-//       <variable name="user_context" value="default"/>
-//       <variable name="effective_caller_id_name" value="Extension 9639"/>
-//       <variable name="effective_caller_id_number" value="9639"/>
-//       <!-- <variable name="outbound_caller_id_name" value="\$\${outbound_caller_name}"/> -->
-//       <!-- <variable name="outbound_caller_id_number" value="\$\${outbound_caller_id}"/> -->
-//     </variables>
-//   </user>
-// </include>
-// `
-
-// const sipProfileTemplate = `
-// <!-- https://wiki.voip.ms/article/FreeSwitch -->
-// <!-- sip_profiles/external/voipms.xml -->
-// <!-- /opt/homebrew/Cellar/freeswitch/1.10.12/etc/freeswitch/sip_profiles/external/voipms.xml -->
-
-// <include>
-//   <gateway name="voipms">
-//     <!-- Replace the values below with your Voip.ms username and password. -->
-//     <param name="username" value="450905" />
-//     <param name="password" value="__REPLACE_WITH_YOUR_PASSWORD__" />
-//     <!-- This gateway could be different depending on which switch you are on -->
-//     <param name="proxy" value="paris1.voip.ms" />
-//     <param name="realm" value="voip.ms" />
-//     <!-- This should be set to "true" for registration based -->
-//     <param name="register" value="true" />
-//     <!-- Voip.ms requires the Remote-Party-Identity Header to be set in the Sip invite for Caller-ID to work right
-//         DON'T FORGET TO REMOVE ANY CALLER ID INFO IN http://voip.ms->Main Menu->Account Settings->General->CallerID Number
-//     -->
-//     <param name="sip_cid_type" value="rpid" /> 
-//     <!--Setting in one place is much easier than everywhere you may bridge. You can do this since 2010 Sept 27 
-//        http://jira.freeswitch.org/browse/FS-2722
-//     -->
-
-//     <!-- <param name="from-domain" value="voip.ms"/> -->
-//   </gateway>
-// </include>
-// `
-
-// TODO: Remove ../../etc/ folder
-
-
 // Make sure the directory exists
 try {
   fsExtra.ensureDirSync(conf.phone.recordingsDir);
@@ -543,6 +339,11 @@ export default class Phone extends Connector {
       //        running freeswitch from ssh actually makes the call hung up in ~30 seconds
       // await this.ensureFreeswitchRunning({ ssh })
 
+
+
+
+
+
       sftp.end();
       ssh.dispose();
       verbose('DONE')
@@ -627,7 +428,7 @@ export default class Phone extends Connector {
       // Create a FreeSWITCH connection
       log(`Connecting to FreeSwitch on ${conf.freeswitch.host}:${conf.freeswitch.port}`);
       verbose('conf.freeswitch.password:', conf.freeswitch.password)
-      this.conn = new modesl.Connection(conf.freeswitch.host, conf.freeswitch.port, conf.freeswitch.password, () => {
+      this.conn = new modesl.Connection(conf.freeswitch.host, conf.freeswitch.port, conf.freeswitch.password, async () => {
         log('Connected to FreeSWITCH');
         this.freeswitchOnline = true;
 
@@ -642,6 +443,43 @@ export default class Phone extends Connector {
           await handleCall(event);
         });
 
+
+        if (conf.freeswitch.reloadxml) {
+          this.conn.api('reloadxml', (res) => {
+            console.log(`> reloadxml: ${res.getBody()}`);
+          });
+          await sleep(3000)
+        }
+
+        if (conf.freeswitch.restartSofia) {
+          this.conn.api('sofia profile internal restart', (res) => {
+            const body = res.getBody()
+            console.log(`> sofia profile internal restart: ${body}`);
+            if (body.includes('Invalid Profile')) {
+              console.log('Fixing invalid profile...')
+              this.conn.api('sofia profile internal start', (res) => {
+                console.log(`> sofia profile internal start: ${res.getBody()}`);
+              });
+            }
+          });
+          await sleep(3000)
+
+          this.conn.api('sofia profile external restart', (res) => {
+            const body = res.getBody()
+            console.log(`> sofia profile external restart: ${body}`);
+            if (body.includes('Invalid Profile')) {
+              console.log('Fixing invalid profile...')
+              this.conn.api('sofia profile external start', (res) => {
+                console.log(`> sofia profile external start: ${res.getBody()}`);
+              });
+            }
+          });
+          await sleep(3000)
+
+          this.conn.api('sofia status', (res) => {
+            console.log(`> sofia status: ${res.getBody()}`);
+          });
+        }
       });
 
       // Handle connection errors
