@@ -492,9 +492,16 @@ const conf = {
   },
 
   freeswitch: {
-    host: process.env.FREESWITCH_HOST || '192.168.50.68', // '127.0.0.1'
+    // NOTE: host can only be ip addess x.y.z.v
+    host: process.env.FREESWITCH_HOST || '192.168.50.100', // '127.0.0.1'
     port: num(process.env.FREESWITCH_PORT || 8022),  // 8021
     password: process.env.FREESWITCH_PASSWORD || 'ClueCon',
+
+    path: process.env.FREESWITCH_PATH || '/opt/homebrew/bin/',
+    configDir: process.env.FREESWITCH_ETC_DIR || '/opt/homebrew/Cellar/freeswitch/1.10.12/etc/freeswitch',
+    sshHost: process.env.FREESWITCH_SSH_HOST || '192.168.50.100',
+    sshUsername: process.env.FREESWITCH_SSH_USERNAME || '(TBS)',
+    sshPassword: process.env.FREESWITCH_SSH_PASSWORD || '(TBS)',
   },
 
   speech: {
@@ -509,9 +516,10 @@ const conf = {
     recordingsExternalDir: process.env.RECORDINGS_EXTERNAL_DIR || '/Users/artemarakcheev/workspace/vuics/self-developing/tmp/recordings',
     recordMaxSec: num(process.env.RECORD_MAX_SEC || 3600),
 
-    saveTranscript: bool(process.env.SAVE_TRANSCRIPT || true),  // false
-    saveAudio: bool(process.env.SAVE_RECORDING || true),  // false
-    saveTts: bool(process.env.SAVE_TTS_FILE || true),  // false
+    // Useful to debug
+    saveTranscript: bool(process.env.SAVE_TRANSCRIPT || false),
+    saveAudio: bool(process.env.SAVE_RECORDING || false),
+    saveTts: bool(process.env.SAVE_TTS_FILE || false),
   },
 }
 
@@ -537,6 +545,8 @@ export const revealConf = () => {
   delete publicConf.xmpp.password
 
   delete publicConf.freeswitch.password
+  delete publicConf.freeswitch.sshUsername
+  delete publicConf.freeswitch.sshPassword
 
   return publicConf
 }

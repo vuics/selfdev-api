@@ -62,6 +62,7 @@
     "mustache": "^4.2.0",
     "nanoid": "^5.1.5",
     "node-cron": "^4.2.1",
+    "node-ssh": "^13.2.1",
     "node-vault": "^0.10.2",
     "nodemailer": "^6.9.7",
     "nodemon": "^3.0.1",

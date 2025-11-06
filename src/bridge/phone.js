@@ -9,6 +9,8 @@ import { client, xml } from '@xmpp/client'
 import FormData from 'form-data';
 import axios from 'axios';
 import { randomUUID } from 'crypto'
+import { NodeSSH } from 'node-ssh'
+import nunjucks from 'nunjucks';
 
 import { log, warn, error, Verbose } from '../services.js'
 import Connector from './connector.js'
@@ -20,6 +22,313 @@ const verbose = Verbose('sd:bridge/phone'); verbose('')
 
 // Allow insecure certificates (without showing warning)
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
+nunjucks.configure({ autoescape: false })
+
+
+
+// TODO:
+// rm autoload_configs/event_socket.conf.xml dialplan/default/99_selfdev-voip.xml dialplan/public/99_450905_voipms.xml directory/default/9639.xml sip_profiles/external/voipms.xml
+
+
+// NOTE: You should turn off VPN to make it work
+const eventSocketTemplate = `
+<configuration name="event_socket.conf" description="Socket Client">
+  <settings>
+    <param name="nat-map" value="false"/>
+    <param name="listen-ip" value="0.0.0.0"/>
+    <param name="listen-port" value="{{ port }}"/>
+    <param name="password" value="{{ password }}"/>
+    <param name="apply-inbound-acl" value="localnet.auto"/>
+  </settings>
+  <acl>
+    <node type="allow" cidr="127.0.0.1/32"/>
+    <node type="allow" cidr="{{ host }}/24"/>
+    <node type="allow" cidr="0.0.0.0/0"/>
+  </acl>
+</configuration>
+`
+
+const dialplanDefaultTemplate =`
+<include>
+    <extension name="{{ name }}">
+      <condition field="destination_number" expression="^({{ name }})$">
+        <action application="set" data="absolute_codec_string=PCMU"/>
+        <action application="set" data="RECORD_STEREO=true"/>
+        <action application="set" data="record_sample_rate=16000"/>
+        <action application="set" data="record_channels=1"/>
+        <action application="set" data="playback_terminators=#"/>
+        <action application="set" data="record_read_only=false"/>
+        <action application="set" data="record_write_only=false"/>
+        <action application="answer"/>
+        <action application="sleep" data="1000"/>
+        <action application="playback" data="ivr/ivr-welcome_to_freeswitch.wav"/>
+        <action application="say" data="en current_time pronounced \${strftime(%H:%M)}"/>
+        <action application="say" data="en current_date pronounced \${strftime(%Y-%m-%d)}"/>
+        <action application="park"/>
+      </condition>
+    </extension>
+</include>
+`
+
+const dialplanPublicTemplate =`
+<include>
+  <extension name="{{ name }}_call">
+    <condition field="destination_number" expression="^({{ username }})$">
+      <action application="answer"/>
+      <action application="playback" data="{loops=1}tone_stream://path=\${conf_dir}/tetris.ttml"/>
+      <action application="sleep" data="1000"/>
+      <action application="park"/>
+    </condition>
+  </extension>
+</include>
+`
+
+// TODO: try with:
+//   <user id="{{ name }}_user">
+const directoryUserTemplate = `
+<include>
+  <user id="{{ number }}">
+    <params>
+      <param name="password" value="{{ password }}"/>
+      <param name="vm-password" value="{{ number }}"/>
+    </params>
+    <variables>
+      <variable name="accountcode" value="{{ number }}"/>
+      <variable name="user_context" value="default"/>
+      <variable name="effective_caller_id_name" value="Extension {{ number }}"/>
+      <variable name="effective_caller_id_number" value="{{ number }}"/>
+      <!-- <variable name="outbound_caller_id_name" value="\$\${outbound_caller_name}"/> -->
+      <!-- <variable name="outbound_caller_id_number" value="\$\${outbound_caller_id}"/> -->
+    </variables>
+  </user>
+</include>
+`
+
+const sipProfileTemplate = `
+<include>
+  <gateway name="{{ name }}">
+    <!-- Replace the values below with your Voip.ms username and password. -->
+    <param name="username" value="{{ username }}" />
+    <param name="password" value="{{ password }}" />
+    <!-- This gateway could be different depending on which switch you are on -->
+    <param name="proxy" value="{{ host }}" />
+    <param name="realm" value="{{ realm }}" />
+    <!-- This should be set to "true" for registration based -->
+    <param name="register" value="true" />
+    <!-- Voip.ms requires the Remote-Party-Identity Header to be set in the Sip invite for Caller-ID to work right
+        DON'T FORGET TO REMOVE ANY CALLER ID INFO IN http://voip.ms->Main Menu->Account Settings->General->CallerID Number
+    -->
+    <param name="sip_cid_type" value="rpid" />
+    <!--Setting in one place is much easier than everywhere you may bridge. You can do this since 2010 Sept 27
+       http://jira.freeswitch.org/browse/FS-2722
+    -->
+  </gateway>
+</include>
+`
+
+///////////////////////////////
+
+// // NOTE: You should turn on VPN to make it work
+// const eventSocketTemplate = `
+// <configuration name="event_socket.conf" description="Socket Client">
+//   <settings>
+//     <param name="nat-map" value="false"/>
+
+//     <!-- <param name="listen-ip" value="::"/> -->
+//     <param name="listen-ip" value="0.0.0.0"/>
+//     <!-- <param name="listen-port" value="8021"/> -->
+//     <param name="listen-port" value="8022"/>
+//     <param name="password" value="ClueCon"/>
+
+//     <!-- NOTE: Enable/uncomment for selfdev-bridge, disable/comment for selfdev-voip -->
+//     <param name="apply-inbound-acl" value="localnet.auto"/>
+
+//     <!-- <param name="apply-inbound-acl" value="false"/> -->
+//     <!--<param name="apply-inbound-acl" value="loopback.auto"/>-->
+//     <!--<param name="stop-on-bind-error" value="true"/>-->
+//   </settings>
+
+//   <!-- (alphara: added the acl tag -->
+//   <acl>
+//     <node type="allow" cidr="127.0.0.1/32"/>
+//     <node type="allow" cidr="192.168.50.100/24"/>  <!-- Add this line -->
+//     <!-- <node type="allow" cidr="172.0.0.0/24"/>     <!-1- allow your Docker network -1-> -->
+//     <!-- <node type="allow" cidr="91.134.0.0/16"/> -->
+//     <node type="allow" cidr="0.0.0.0/0"/>
+
+//     <!-- Add any other IPs that need access -->
+//   </acl>
+
+// </configuration>
+// `
+
+// const dialplanDefaultTemplate =`
+// <include>
+
+//     <extension name="selfdev-voip">
+//       <condition field="destination_number" expression="^(selfdev-voip)$">
+//         <action application="set" data="absolute_codec_string=PCMU"/>
+//         <action application="set" data="RECORD_STEREO=true"/>
+//         <action application="set" data="record_sample_rate=16000"/>
+//         <action application="set" data="record_channels=1"/>
+//         <action application="set" data="record_read_only=false"/>
+//         <action application="set" data="record_write_only=false"/>
+//         <action application="answer"/>
+//         <action application="park"/>
+//       </condition>
+//     </extension>
+
+//     <extension name="echo_playback">
+//       <condition field="destination_number" expression="^(echo)$">
+//         <action application="answer"/>
+//         <action application="sleep" data="1000"/>
+
+//         <action application="set" data="RECORD_STEREO=false"/>
+//         <action application="set" data="record_temp_path=/tmp/echo_\${uuid}.wav"/>
+
+//         <!-- Start full session recording -->
+//         <action application="record_session" data="\${record_temp_path}"/>
+
+//         <!-- Record for 5 seconds -->
+//         <action application="sleep" data="5000"/>
+
+//         <!-- Stop recording manually -->
+//         <action application="stop_record_session"/>
+
+//         <!-- Playback the recorded voice -->
+//         <action application="playback" data="\${record_temp_path}"/>
+
+//         <action application="hangup"/>
+//       </condition>
+//     </extension>
+
+//     <extension name="voicemail_test">
+//       <condition field="destination_number" expression="^(voicemail)$">
+//         <action application="set" data="absolute_codec_string=PCMU"/>
+//         <action application="set" data="RECORD_STEREO=true"/>
+//         <action application="set" data="record_sample_rate=16000"/>
+//         <action application="set" data="record_channels=1"/>
+//         <action application="set" data="playback_terminators=#"/>
+//         <action application="set" data="record_read_only=false"/>
+//         <action application="set" data="record_write_only=false"/>
+//         <action application="answer"/>
+//         <action application="sleep" data="1000"/>
+//         <action application="playback" data="ivr/ivr-welcome_to_freeswitch.wav"/>
+//         <action application="say" data="en current_time pronounced \${strftime(%H:%M)}"/>
+//         <action application="say" data="en current_date pronounced \${strftime(%Y-%m-%d)}"/>
+//         <action application="park"/>
+//         <!-- <action application="record" data="/tmp/voicemail_\${uuid}.wav 60 2 5"/> -->
+//         <!-- <action application="log" data="NOTICE ***** VOICEMAIL RECORDING COMPLETE: /tmp/voicemail_\${uuid}.wav *****"/> -->
+//         <!-- <action application="hangup"/> -->
+//       </condition>
+//     </extension>
+
+//     <extension name="my_number_call">
+//       <condition field="destination_number" expression="^(450905)$">
+//         <action application="answer"/>
+//         <action application="playback" data="{loops=1}tone_stream://path=\${conf_dir}/tetris.ttml"/>
+//         <action application="sleep" data="1000"/>
+//         <action application="playback" data="ivr/ivr-welcome_to_freeswitch.wav"/>
+//         <action application="playback" data="ivr/ivr-record_message.wav"/>
+//         <action application="park"/>
+//       </condition>
+//     </extension>
+
+//     <extension name="audio_test">
+//       <condition field="destination_number" expression="^(test)$">
+//         <action application="answer"/>
+//         <action application="sleep" data="1000"/>
+//         <action application="playback" data="tone_stream://%(10000,0,350,440)"/>
+//         <action application="echo"/>
+//         <action application="hangup"/>
+//       </condition>
+//     </extension>
+
+//     <extension name="simple_test">
+//       <condition field="destination_number" expression="^(test123)$">
+//         <action application="answer"/>
+//         <action application="sleep" data="1000"/>
+//         <action application="playback" data="tone_stream://%(2000,0,350,440)"/>
+//         <action application="hangup"/>
+//       </condition>
+//     </extension>
+
+//     <extension name="audio_file_test">
+//       <condition field="destination_number" expression="^(test456)$">
+//         <action application="answer"/>
+//         <action application="sleep" data="1000"/>
+//         <action application="playback" data="/opt/homebrew/Cellar/freeswitch/1.10.12/share/freeswitch/sounds/en/us/callie/conference/8000/conf-alone.wav"/>
+//         <action application="hangup"/>
+//       </condition>
+//     </extension>
+
+// </include>
+// `
+
+// const dialplanPublicTemplate =`
+// <include>
+//   <extension name="my_number_call">
+//     <condition field="destination_number" expression="^(450905)$">
+//       <action application="answer"/>
+//       <action application="playback" data="{loops=1}tone_stream://path=\${conf_dir}/tetris.ttml"/>
+//       <action application="sleep" data="1000"/>
+//       <action application="park"/>
+//     </condition>
+//   </extension>
+// </include>
+// `
+
+// // TODO: try with:
+// //   <user id="{{ name }}_user">
+// const directoryUserTemplate = `
+// <include>
+//   <user id="9639">
+//     <params>
+//       <param name="password" value="1234"/>
+//       <param name="vm-password" value="9639"/>
+//     </params>
+//     <variables>
+//       <variable name="accountcode" value="9639"/>
+//       <variable name="user_context" value="default"/>
+//       <variable name="effective_caller_id_name" value="Extension 9639"/>
+//       <variable name="effective_caller_id_number" value="9639"/>
+//       <!-- <variable name="outbound_caller_id_name" value="\$\${outbound_caller_name}"/> -->
+//       <!-- <variable name="outbound_caller_id_number" value="\$\${outbound_caller_id}"/> -->
+//     </variables>
+//   </user>
+// </include>
+// `
+
+// const sipProfileTemplate = `
+// <!-- https://wiki.voip.ms/article/FreeSwitch -->
+// <!-- sip_profiles/external/voipms.xml -->
+// <!-- /opt/homebrew/Cellar/freeswitch/1.10.12/etc/freeswitch/sip_profiles/external/voipms.xml -->
+
+// <include>
+//   <gateway name="voipms">
+//     <!-- Replace the values below with your Voip.ms username and password. -->
+//     <param name="username" value="450905" />
+//     <param name="password" value="__REPLACE_WITH_YOUR_PASSWORD__" />
+//     <!-- This gateway could be different depending on which switch you are on -->
+//     <param name="proxy" value="paris1.voip.ms" />
+//     <param name="realm" value="voip.ms" />
+//     <!-- This should be set to "true" for registration based -->
+//     <param name="register" value="true" />
+//     <!-- Voip.ms requires the Remote-Party-Identity Header to be set in the Sip invite for Caller-ID to work right
+//         DON'T FORGET TO REMOVE ANY CALLER ID INFO IN http://voip.ms->Main Menu->Account Settings->General->CallerID Number
+//     -->
+//     <param name="sip_cid_type" value="rpid" /> 
+//     <!--Setting in one place is much easier than everywhere you may bridge. You can do this since 2010 Sept 27 
+//        http://jira.freeswitch.org/browse/FS-2722
+//     -->
+
+//     <!-- <param name="from-domain" value="voip.ms"/> -->
+//   </gateway>
+// </include>
+// `
+
+// TODO: Remove ../../etc/ folder
 
 
 // Make sure the directory exists
@@ -74,6 +383,233 @@ export default class Phone extends Connector {
   //   }
   // }
 
+
+  async ensureFreeswitchRunning({ ssh }) {
+    // Try to detect if FreeSWITCH is running
+    // TODO: make it starting in loop
+    const check = await ssh.execCommand('pgrep freeswitch');
+    if (check.stdout.trim()) {
+      console.log('FreeSWITCH is already running, PID(s):', check.stdout.trim());
+    } else {
+      console.log('FreeSWITCH is not running — starting it now...');
+
+      // You can adapt depending on your setup:
+      // Option 1: systemd
+      // const start = await ssh.execCommand('sudo systemctl start freeswitch');
+
+      // Option 2 (if running manually)
+      const result = await ssh.execCommand(`PATH=\$PATH:${conf.freeswitch.path} nohup freeswitch -nc -nonat &`);
+      if (result.code === 0 || result.stderr.includes('Backgrounding')) {
+        log('Waiting 30 seconds for the freeswitch to start')
+        await sleep(30_000)
+        log('Finished to wait. Continuing...')
+      } else {
+        console.error('Failed to start FreeSWITCH:', result.stderr);
+      }
+    }
+  }
+
+  async putToRemote({ sftp, remotePath, content }) {
+    return new Promise((resolve, reject) => {
+      const writeStream = sftp.createWriteStream(remotePath);
+      writeStream.write(content);
+      writeStream.end();
+      writeStream.on('close', resolve);
+      writeStream.on('error', reject);
+    });
+  }
+
+  async configure () {
+    verbose('Phone configure')
+    try {
+      const ssh = new NodeSSH()
+      await ssh.connect({
+        host: conf.freeswitch.sshHost,
+        username: conf.freeswitch.sshUsername,
+        // privateKey: '/path/to/key'
+        password: conf.freeswitch.sshPassword,
+      });
+      const sftp = await ssh.requestSFTP();
+      // verbose('sftp:', sftp)
+
+
+      verbose('eventSocketTemplate:', eventSocketTemplate)
+      const eventSocketRendered = nunjucks.renderString(eventSocketTemplate, {
+        host: conf.freeswitch.host,
+        port: conf.freeswitch.port,
+        password: conf.freeswitch.password,
+      });
+      verbose('eventSocketRendered:', eventSocketRendered)
+      const eventSocketFilename = path.join(conf.freeswitch.configDir,
+        `autoload_configs/event_socket.conf.xml`
+      );
+      await this.putToRemote({
+        sftp,
+        remotePath: eventSocketFilename,
+        content: eventSocketRendered,
+      })
+      verbose('File saved as:', eventSocketFilename)
+
+
+      verbose('dialplanDefaultTemplate:', dialplanDefaultTemplate)
+      const dialplanDefaultRendered = nunjucks.renderString(dialplanDefaultTemplate, {
+        name: this.bridge.options.name,
+      });
+      verbose('dialplanDefaultRendered:', dialplanDefaultRendered)
+      const dialplanDefaultFilename = path.join(conf.freeswitch.configDir,
+        // FIXME:
+        `dialplan/default/99_${this.bridge.options.name}.xml`
+
+        // 'dialplan/default/99_selfdev-voip.xml'
+      );
+      await this.putToRemote({
+        sftp,
+        remotePath: dialplanDefaultFilename,
+        content: dialplanDefaultRendered,
+      })
+      verbose('File saved as:', dialplanDefaultFilename)
+
+
+      verbose('dialplanPublicTemplate:', dialplanPublicTemplate)
+      const dialplanPublicRendered = nunjucks.renderString(dialplanPublicTemplate, {
+        name: this.bridge.options.name,
+        username: this.bridge.options.phone.username,
+      });
+      verbose('dialplanPublicRendered:', dialplanPublicRendered)
+      const dialplanPublicFilename = path.join(conf.freeswitch.configDir,
+        // FIXME:
+        `dialplan/public/99_${this.bridge.options.name}_call.xml`
+
+        // 'dialplan/public/99_450905_voipms.xml'
+      );
+      await this.putToRemote({
+        sftp,
+        remotePath: dialplanPublicFilename,
+        content: dialplanPublicRendered,
+      })
+      verbose('File saved as:', dialplanPublicFilename)
+
+
+      // FIXME: add to bridge config
+      this.bridge.options.phone.directoryNumber = '9639'
+      this.bridge.options.phone.directoryPassword = '1234'
+
+      verbose('directoryUserTemplate:', directoryUserTemplate)
+      const directoryUserRendered = nunjucks.renderString(directoryUserTemplate, {
+        name: this.bridge.options.name,
+        number: this.bridge.options.phone.directoryNumber,
+        password: this.bridge.options.phone.directoryPassword,
+      });
+      verbose('directoryUserRendered:', directoryUserRendered)
+      const directoryUserFilename = path.join(conf.freeswitch.configDir,
+        // FIXME:
+        `directory/default/${this.bridge.options.name}.xml`
+
+        // 'directory/default/9639.xml'
+      );
+      await this.putToRemote({
+        sftp,
+        remotePath: directoryUserFilename,
+        content: directoryUserRendered,
+      })
+      verbose('File saved as:', directoryUserFilename)
+
+
+      verbose('sipProfileTemplate:', sipProfileTemplate)
+      const sipProfileRendered = nunjucks.renderString(sipProfileTemplate, {
+        name: this.bridge.options.name,
+        username: this.bridge.options.phone.username,
+        password: this.bridge.options.phone.password,
+        host: this.bridge.options.phone.host,
+
+        // FIXME: add to config
+        realm: 'voip.ms',
+      });
+      verbose('sipProfileRendered:', sipProfileRendered)
+      const sipProfileFilename = path.join(conf.freeswitch.configDir,
+        // FIXME:
+        `/sip_profiles/external/${this.bridge.options.name}.xml`
+
+        // 'sip_profiles/external/voipms.xml',
+      );
+      await this.putToRemote({
+        sftp,
+        remotePath: sipProfileFilename,
+        content: sipProfileRendered,
+      })
+      verbose('File saved as:', sipProfileFilename)
+
+      // FIXME: uncomment and make it work
+      //        running freeswitch from ssh actually makes the call hung up in ~30 seconds
+      // await this.ensureFreeswitchRunning({ ssh })
+
+      sftp.end();
+      ssh.dispose();
+      verbose('DONE')
+    } catch (err) {
+      error('Error configuring the phone:', err)
+      throw err
+    }
+  }
+
+  async removeFiles({ sftp, filePaths }) {
+    for (const filePath of filePaths) {
+      try {
+        await new Promise((resolve, reject) => {
+          sftp.unlink(filePath, (err) => (err ? reject(err) : resolve()));
+        });
+        console.log(`Removed: ${filePath}`);
+      } catch (err) {
+        console.error(`Failed to remove ${filePath}:`, err.message);
+      }
+    }
+
+  }
+
+  async deconfigure () {
+    verbose('Phone configure')
+    try {
+      const ssh = new NodeSSH()
+      await ssh.connect({
+        host: conf.freeswitch.sshHost,
+        username: conf.freeswitch.sshUsername,
+        // privateKey: '/path/to/key'
+        password: conf.freeswitch.sshPassword,
+      });
+      const sftp = await ssh.requestSFTP();
+      // verbose('sftp:', sftp)
+
+      // FIXME: uncomment
+      //
+      // const filePaths = [
+      //   // `autoload_configs/event_socket.conf.xml`, // NOTE: this config is one for all
+      //   `dialplan/default/99_${this.bridge.options.name}.xml`,
+      //   `dialplan/public/99_${this.bridge.options.name}_call.xml`,
+      //   `directory/default/${this.bridge.options.name}.xml`,
+      //   `/sip_profiles/external/${this.bridge.options.name}.xml`,
+      // ].map(p => path.join(conf.freeswitch.configDir, p));
+      // // log('Removing path:', filePaths)
+      // await this.removeFiles({ sftp, filePaths, })
+
+      // // TODO: make it scalable
+      // //       what if there is another bridge that uses freeswitch?
+      // log('Shutting down freeswitch')
+      // const result = await ssh.execCommand('killall freeswitch');
+      // if (result.stderr) {
+      //   console.error('Error:', result.stderr.trim());
+      // } else {
+      //   console.log('Output:', result.stdout.trim());
+      // }
+
+      sftp.end();
+      ssh.dispose();
+      verbose('DONE')
+    } catch (err) {
+      error('Error configuring the phone:', err)
+      throw err
+    }
+  }
+
   async start () {
     super.start()
     verbose('Phone started')
@@ -82,9 +618,15 @@ export default class Phone extends Connector {
       this.parkUuid = null
       this.sendSmsCmdPrefix = null
 
+      await this.configure()
+
+      // FIXME: remove
+      // return;
+
+
       // Create a FreeSWITCH connection
       log(`Connecting to FreeSwitch on ${conf.freeswitch.host}:${conf.freeswitch.port}`);
-      // verbose('conf.freeswitch.password:', conf.freeswitch.password)
+      verbose('conf.freeswitch.password:', conf.freeswitch.password)
       this.conn = new modesl.Connection(conf.freeswitch.host, conf.freeswitch.port, conf.freeswitch.password, () => {
         log('Connected to FreeSWITCH');
         this.freeswitchOnline = true;
@@ -103,18 +645,86 @@ export default class Phone extends Connector {
       });
 
       // Handle connection errors
-      this.conn.on('error', (error) => {
-        error('FreeSWITCH connection error:', error);
+      this.conn.on('error', (err) => {
+        error('FreeSWITCH connection error:', err);
       });
 
-      this.conn.on('esl::connect', () => {
+      this.conn.on('esl::connect', async () => {
         log('ESL connected');
+        try {
+          // FIXME: Should we use these commands at all?
+          //        They break the communication to freeswitch
+          //
+          // await new Promise((resolve, reject) => {
+          //   verbose('Send command: reloadxml')
+          //   this.conn.api('reloadxml', ``, (res) => {
+          //     log(`Set var: ${res.getBody()}`);
+          //     resolve()
+          //   });
+          // })
+          // await new Promise((resolve, reject) => {
+          //   verbose('Send command: reload mod_event_socket')
+          //   this.conn.api('reload', `mod_event_socket`, (res) => {
+          //     log(`Set var: ${res.getBody()}`);
+          //     resolve()
+          //   });
+          // })
+
+          // await new Promise((resolve, reject) => {
+          //   verbose(`Send command: global_setvar local_ip_v4=${conf.freeswitch.host}`)
+          //   this.conn.api('global_setvar', `local_ip_v4=${conf.freeswitch.host}`, (res) => {
+          //     log(`Set var: ${res.getBody()}`);
+          //     resolve()
+          //   });
+          // })
+          // await new Promise((resolve, reject) => {
+          //   verbose(`Send command: global_setvar external_rtp_ip=${conf.freeswitch.host}`)
+          //   this.conn.api('global_setvar', `external_rtp_ip=${conf.freeswitch.host}`, (res) => {
+          //     log(`Set var: ${res.getBody()}`);
+          //     resolve()
+          //   });
+          // })
+          // await new Promise((resolve, reject) => {
+          //   verbose(`Send command: global_setvar external_sip_ip=${conf.freeswitch.host}`)
+          //   this.conn.api('global_setvar', `external_sip_ip=${conf.freeswitch.host}`, (res) => {
+          //     log(`Set var: ${res.getBody()}`);
+          //     resolve()
+          //   });
+          // })
+
+          // await new Promise((resolve, reject) => {
+          //   verbose(`Send command: sofia profile internal restart`)
+          //   this.conn.api('sofia', 'profile internal restart', (res) => {
+          //     log(`Set var: ${res.getBody()}`);
+          //     resolve()
+          //   });
+          // })
+          // await new Promise((resolve, reject) => {
+          //   verbose(`Send command: sofia profile external restart`)
+          //   this.conn.api('sofia', 'profile external restart', (res) => {
+          //     log(`Set var: ${res.getBody()}`);
+          //     resolve()
+          //   });
+          // })
+          // await new Promise((resolve, reject) => {
+          //   verbose(`Send command: sofia status`)
+          //   this.conn.api('sofia', 'status', (res) => {
+          //     log(`Set var: ${res.getBody()}`);
+          //     resolve()
+          //   });
+          // })
+        } catch (err) {
+          error('Error configuring freeswitch on connect:', err)
+        }
       });
+
 
       this.conn.on('esl::event::*::*', (event) => {
-        // verbose('event:', event)
         const eventName = event.getHeader('Event-Name');
         log(`Event name received: ${eventName}`);
+        if (!eventName) {
+          verbose('event:', event)
+        }
         // log('event:', JSON.stringify(event))
 
         // For CUSTOM events, show the subclass
@@ -138,12 +748,10 @@ export default class Phone extends Connector {
         const callee = event.getHeader('Caller-Destination-Number');
         log(`New call detected: ${caller} → ${callee} (UUID: ${uuid})`);
 
-        if (callee && callee === 'voicemail') {
-          log('Voicemail call detected');
-
-          // FIXME: the callee is hardcodded, make a setting
-        } else if (callee && callee === '450905') {
-          log('Inbound 450905@VoIP.ms call detected');
+        if (callee && callee === this.bridge.options.name) {
+          log(`Inbound named ${this.bridge.options.name} call detected`);
+        } else if (callee && callee === this.bridge.options.phone.username) {
+          log(`Inbound external ${this.bridge.options.phone.username}@${this.bridge.options.phone.host} call detected`);
         }
       });
 
@@ -583,7 +1191,8 @@ export default class Phone extends Connector {
     this.conn.disconnect();
     this.freeswitchOnline = false;
     log('Disconnecting from XMPP');
-    await this.xmppAgent.stop()
+    this.xmppAgent.stop()
+    this.deconfigure()
 
     verbose('Phone stopped')
   }
