@@ -62,9 +62,9 @@ const dialplanDefaultTemplate =`
         <action application="set" data="record_write_only=false"/>
         <action application="answer"/>
         <action application="sleep" data="1000"/>
-        <action application="playback" data="ivr/ivr-welcome_to_freeswitch.wav"/>
+        <!-- <action application="playback" data="ivr/ivr-welcome_to_freeswitch.wav"/> -->
+        <!-- <action application="say" data="en current_date pronounced \${strftime(%Y-%m-%d)}"/> -->
         <action application="say" data="en current_time pronounced \${strftime(%H:%M)}"/>
-        <action application="say" data="en current_date pronounced \${strftime(%Y-%m-%d)}"/>
         <action application="park"/>
       </condition>
     </extension>
@@ -581,15 +581,15 @@ export default class Phone extends Connector {
 
       // FIXME: uncomment
       //
-      // const filePaths = [
-      //   // `autoload_configs/event_socket.conf.xml`, // NOTE: this config is one for all
-      //   `dialplan/default/99_${this.bridge.options.name}.xml`,
-      //   `dialplan/public/99_${this.bridge.options.name}_call.xml`,
-      //   `directory/default/${this.bridge.options.name}.xml`,
-      //   `/sip_profiles/external/${this.bridge.options.name}.xml`,
-      // ].map(p => path.join(conf.freeswitch.configDir, p));
-      // // log('Removing path:', filePaths)
-      // await this.removeFiles({ sftp, filePaths, })
+      const filePaths = [
+        // `autoload_configs/event_socket.conf.xml`, // NOTE: this config is one for all
+        `dialplan/default/99_${this.bridge.options.name}.xml`,
+        `dialplan/public/99_${this.bridge.options.name}_call.xml`,
+        `directory/default/${this.bridge.options.name}.xml`,
+        `/sip_profiles/external/${this.bridge.options.name}.xml`,
+      ].map(p => path.join(conf.freeswitch.configDir, p));
+      // log('Removing path:', filePaths)
+      await this.removeFiles({ sftp, filePaths, })
 
       // // TODO: make it scalable
       // //       what if there is another bridge that uses freeswitch?
@@ -673,20 +673,6 @@ export default class Phone extends Connector {
           // await new Promise((resolve, reject) => {
           //   verbose(`Send command: global_setvar local_ip_v4=${conf.freeswitch.host}`)
           //   this.conn.api('global_setvar', `local_ip_v4=${conf.freeswitch.host}`, (res) => {
-          //     log(`Set var: ${res.getBody()}`);
-          //     resolve()
-          //   });
-          // })
-          // await new Promise((resolve, reject) => {
-          //   verbose(`Send command: global_setvar external_rtp_ip=${conf.freeswitch.host}`)
-          //   this.conn.api('global_setvar', `external_rtp_ip=${conf.freeswitch.host}`, (res) => {
-          //     log(`Set var: ${res.getBody()}`);
-          //     resolve()
-          //   });
-          // })
-          // await new Promise((resolve, reject) => {
-          //   verbose(`Send command: global_setvar external_sip_ip=${conf.freeswitch.host}`)
-          //   this.conn.api('global_setvar', `external_sip_ip=${conf.freeswitch.host}`, (res) => {
           //     log(`Set var: ${res.getBody()}`);
           //     resolve()
           //   });
