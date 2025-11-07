@@ -3,15 +3,17 @@ import { inspect } from 'util'
 
 import { log, warn, error, Verbose } from '../services.js'
 import conf, { revealConf } from '../conf.js'
-import Messengers from './messengers.js'
-import Phone from './phone.js'
-import Scheduler from './scheduler.js'
 import { sleep } from '../utils/helper.js'
 import '../mongo.js'
 import User from '../models/user.js'
 import Bridge from '../models/bridge.js'
 import { redisClient, connectToRedis } from '../redis.js'
 import { replaceVaultValues } from '../vault.js'
+
+import Messengers from './messengers.js'
+import Phone from './phone.js'
+import Scheduler from './scheduler.js'
+import Webhook from './webhook.js'
 
 const verbose = Verbose('sd:bridge/index'); verbose('')
 
@@ -22,6 +24,7 @@ const connectorClasses = {
   "messengers": Messengers,
   "phone": Phone,
   "scheduler": Scheduler,
+  "webhook": Webhook,
 }
 
 const runningConnectorBridges = {};

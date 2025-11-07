@@ -123,6 +123,18 @@ const SchedulerSchema = new mongoose.Schema({
   enableRoom: Boolean,
 }, { _id: false })
 
+
+const WebhookSchema = new mongoose.Schema({
+  method: String,
+  endpoint: String,
+
+  recipient: String,
+  recipientNickname: String,
+  joinRoom: String,
+  enablePersonal: Boolean,
+  enableRoom: Boolean,
+}, { _id: false })
+
 const BridgeSchema = new mongoose.Schema({
   userId: {
     type: ObjectId,
@@ -138,9 +150,10 @@ const BridgeSchema = new mongoose.Schema({
     name: { type: String, required: true }, // unique name within user scope
     description: String,
 
-    messengers: { type: MessengersSchema, required: false },
-    phone: { type: PhoneSchema, required: false },
-    scheduler: { type: SchedulerSchema, required: false },
+    messengers: MessengersSchema,
+    phone: PhoneSchema,
+    scheduler: SchedulerSchema,
+    webhook: WebhookSchema,
   },
 
   logs: String

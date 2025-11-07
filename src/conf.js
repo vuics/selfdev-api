@@ -526,6 +526,10 @@ const conf = {
     saveAudio: bool(process.env.SAVE_RECORDING || false),
     saveTts: bool(process.env.SAVE_TTS_FILE || false),
   },
+
+  webhook: {
+    port: num(process.env.WEBHOOK_PORT || 6370),
+  },
 }
 
 export default conf
