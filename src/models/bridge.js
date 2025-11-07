@@ -7,7 +7,6 @@ verbose('Loading Bridge model')
 
 const { ObjectId, Mixed } = mongoose.Schema.Types
 
-// === Subschema: General settings ===
 const GeneralSchema = new mongoose.Schema({
   RemoteNickFormat: {
     type: String,
@@ -16,7 +15,6 @@ const GeneralSchema = new mongoose.Schema({
   }
 }, { _id: false })
 
-// === Subschema: Protocols ===
 const ProtocolSchema = new mongoose.Schema({
   type: {
     type: String,
@@ -65,7 +63,6 @@ const ProtocolSchema = new mongoose.Schema({
   TLSCACertificate: String,
 }, { _id: false })
 
-// === Subschema: Gateway Channels ===
 const GatewayChannelSchema = new mongoose.Schema({
   account: { type: String, required: true },
   channel: { type: String, required: true },
@@ -76,7 +73,6 @@ const GatewayChannelSchema = new mongoose.Schema({
   }
 }, { _id: false })
 
-// === Subschema: Gateways ===
 const GatewaySchema = new mongoose.Schema({
   name: { type: String, required: true },
   enable: { type: Boolean, default: true },
@@ -87,14 +83,12 @@ const GatewaySchema = new mongoose.Schema({
   }
 }, { _id: false })
 
-// === Subschema: Messengers ===
 const MessengersSchema = new mongoose.Schema({
   general: { type: GeneralSchema, required: true, default: () => ({}) },
   protocols: { type: [ProtocolSchema], required: true, default: [] },
   gateways: { type: [GatewaySchema], required: true, default: [] }
 }, { _id: false })
 
-// === Subschema: Phone ===
 const PhoneSchema = new mongoose.Schema({
   host: String,
   username: String,
@@ -114,7 +108,21 @@ const PhoneSchema = new mongoose.Schema({
   welcomeMessage: String,
 }, { _id: false })
 
-// === Root Bridge Schema ===
+const SchedulerSchema = new mongoose.Schema({
+  cron: String,
+  message: String,
+
+  timezone: String,
+  // maxExecutions: Number,
+  maxRandomDelay: Number,
+
+  recipient: String,
+  recipientNickname: String,
+  joinRoom: String,
+  enablePersonal: Boolean,
+  enableRoom: Boolean,
+}, { _id: false })
+
 const BridgeSchema = new mongoose.Schema({
   userId: {
     type: ObjectId,
@@ -132,12 +140,12 @@ const BridgeSchema = new mongoose.Schema({
 
     messengers: { type: MessengersSchema, required: false },
     phone: { type: PhoneSchema, required: false },
+    scheduler: { type: SchedulerSchema, required: false },
   },
 
   logs: String
 })
 
-// Plugins
 BridgeSchema.plugin(mongooseTimestamp)
 
 export default mongoose.model('Bridge', BridgeSchema)

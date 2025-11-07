@@ -1,0 +1,90 @@
+import cron from 'node-cron';
+
+import { log, warn, error, Verbose } from '../services.js'
+import Connector from './connector.js'
+import XmppAgent from '../swarm/xmpp-agent.js'
+import conf from '../conf.js'
+
+const verbose = Verbose('sd:bridge/scheduler'); verbose('')
+
+// Allow insecure certificates (without showing warning)
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
+// nunjucks.configure({ autoescape: false })
+
+
+export default class Scheduler extends Connector {
+  constructor (args) {
+    super(args)
+    // const { bridge } = args
+    verbose('Scheduler constructed')
+
+    verbose('this.bridge:', this.bridge)
+
+    this.xmppAgent = new XmppAgent({
+      agent: {
+        options: {
+          name: this.bridge.options.name,
+          joinRooms: [this.bridge.options.scheduler.joinRoom],
+        },
+        userId: this.bridge.userId,
+      },
+      handleChat: this.bridge.options.scheduler.enablePersonal,
+      handleRooms: this.bridge.options.scheduler.enableRoom,
+    })
+    this.task = null
+  }
+
+  async start () {
+    super.start()
+    verbose('Scheduler started')
+    try {
+      await this.xmppAgent.start()
+      // this.xmppAgent.chat = async ({ prompt, replyFunc=()=>{} } = {}) => {
+      //   verbose('Scheduler received chat with prompt:', prompt)
+      //   return ''
+      // }
+
+      this.task = cron.schedule(this.bridge.options.scheduler.cron, async () => {
+        try {
+          log(`[${new Date().toISOString()}] scheduler:`, this.bridge.options.name,
+            ', cron:', this.bridge.options.scheduler.cron,
+            ', sends message:', this.bridge.options.scheduler.message,
+          );
+          if (this.bridge.options.scheduler.enablePersonal) {
+            await this.xmppAgent.xmppClient.sendPersonalMessage({
+              recipient: this.bridge.options.scheduler.recipient,
+              prompt: this.bridge.options.scheduler.message,
+            })
+          }
+          if (this.bridge.options.scheduler.enableRoom) {
+            await this.xmppAgent.xmppClient.sendRoomMessage({
+              room: this.bridge.options.scheduler.joinRoom,
+              recipient: this.bridge.options.scheduler.recipientNickname,
+              prompt: this.bridge.options.scheduler.message,
+              mucHost: conf.xmpp.mucHost,
+            })
+          }
+        } catch (err) {
+          error('Error running scheduled task:', this.bridge.options.name,
+            ', error:', err)
+        }
+      }, {
+        name: this.bridge.options.name,
+        // maxExecutions: this.bridge.options.scheduler.maxExecutions,
+        timezone: this.bridge.options.scheduler.timezone || undefined,
+        maxRandomDelay: this.bridge.options.scheduler.maxRandomDelay,
+      });
+      await this.task.start()
+    } catch (err) {
+      error('Error starting Scheduler:', err)
+    }
+  }
+
+  async stop () {
+    super.stop()
+    this.xmppAgent.stop()
+    this.task.destroy()
+    verbose('Scheduler stopped')
+  }
+}

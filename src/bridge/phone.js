@@ -1,11 +1,9 @@
 import modesl from 'modesl'
 import fsExtra from 'fs-extra'
 import path from 'path'
-import dotenv from 'dotenv'
 import fs from 'fs'
-import os from 'os'
-import { exec } from 'node:child_process'
-import { client, xml } from '@xmpp/client'
+// import { exec } from 'node:child_process'
+// import { client, xml } from '@xmpp/client'
 import FormData from 'form-data';
 import axios from 'axios';
 import { randomUUID } from 'crypto'
@@ -17,6 +15,7 @@ import Connector from './connector.js'
 import Bridge from '../models/bridge.js'
 import XmppAgent from '../swarm/xmpp-agent.js'
 import conf from '../conf.js'
+import { sleep } from '../utils/helper.js'
 
 const verbose = Verbose('sd:bridge/phone'); verbose('')
 
@@ -129,10 +128,6 @@ try {
   process.exit(1);
 }
 
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 export default class Phone extends Connector {
   constructor (args) {
     super(args)
@@ -150,28 +145,7 @@ export default class Phone extends Connector {
       handleChat: this.bridge.options.phone.enablePersonal,
       handleRooms: this.bridge.options.phone.enableRoom,
     })
-
-    // TODO: move to parent class
-    // this.logs = ''
-    // this.collectLogs = true
   }
-
-  // TODO: move to parent class
-  // async saveLogs () {
-  //   try {
-  //     const bridgeDoc = await Bridge.findById(this.bridge._id)
-  //     if (bridgeDoc) {
-  //       bridgeDoc.logs = this.logs
-  //       await bridgeDoc.save()
-  //       log('Logs saved for bridge:', this.bridge._id, ":", this.bridge.options.name)
-  //       // verbose('bridgeDoc:', bridgeDoc)
-  //       // verbose('bridgeDoc.logs:', bridgeDoc.logs)
-  //     }
-  //   } catch (err) {
-  //     error('Error saving logs:', err)
-  //   }
-  // }
-
 
   async ensureFreeswitchRunning({ ssh }) {
     // Try to detect if FreeSWITCH is running
