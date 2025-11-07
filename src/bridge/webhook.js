@@ -73,7 +73,7 @@ export default class Webhook extends Connector {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.pendingResponses.delete(requestId);
-        reject(new Error('Timeout waiting for XMPP response'));
+        reject(new Error('Timeout waiting for response'));
       }, (this.bridge.options.webhook.responseTimeoutSec || 300) * 1000);
 
       this.pendingResponses.set(requestId, { resolve, reject, timeout });
