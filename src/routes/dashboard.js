@@ -26,6 +26,38 @@ router.get('/', checkAuth, async (req, res, next) => {
     out.bridges = await Bridge.countDocuments({ userId: req.user._id });
     out.deployedBridges = await Bridge.countDocuments({ userId: req.user._id, deployed: true });
 
+    out.agentArchetypes = await Agent.aggregate([
+      {
+        $group: {
+          _id: "$archetype",
+          total: { $sum: 1 },
+          deployed: {
+            $sum: {
+              $cond: [{ $eq: ["$deployed", true] }, 1, 0]
+            }
+          }
+        }
+      },
+      { $sort: { total: 1 } }
+    ]);
+
+    out.bridgeConnectors = await Bridge.aggregate([
+      {
+        $group: {
+          _id: "$connector",
+          total: { $sum: 1 },
+          deployed: {
+            $sum: {
+              $cond: [{ $eq: ["$deployed", true] }, 1, 0]
+            }
+          }
+        }
+      },
+      { $sort: { total: 1 } }
+    ]);
+
+    verbose("dashboard out:", out);
+
     res.json(out);
   } catch (err) {
     error('Get dashboard error:', err)
