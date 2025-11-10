@@ -527,12 +527,8 @@ const conf = {
     saveTts: bool(process.env.SAVE_TTS_FILE || false),
   },
 
-  webhook: {
-    port: num(process.env.WEBHOOK_PORT || 6370),
-  },
-
-  mcp: {
-    port: num(process.env.MCP_PORT || 6371),
+  webServer: {
+    port: num(process.env.WEB_SERVER_PORT || 6370),
   },
 }
 

@@ -177,6 +177,20 @@ const EmailSchema = new mongoose.Schema({
   enableRoom: Boolean,
 }, { _id: false })
 
+const McpSchema = new mongoose.Schema({
+  // method: String,
+  endpoint: String,
+  // timeoutSec: Number,
+  // setRequestId: Boolean,
+  // requestIdKey: String,
+
+  recipient: String,
+  recipientNickname: String,
+  joinRoom: String,
+  enablePersonal: Boolean,
+  enableRoom: Boolean,
+}, { _id: false })
+
 const BridgeSchema = new mongoose.Schema({
   userId: {
     type: ObjectId,
@@ -198,6 +212,7 @@ const BridgeSchema = new mongoose.Schema({
     webhook: WebhookSchema,
     curl: CurlSchema,
     email: EmailSchema,
+    mcp: McpSchema,
   },
 
   logs: String

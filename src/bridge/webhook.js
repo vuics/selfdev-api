@@ -1,8 +1,8 @@
-import express from 'express';
-import morgan from 'morgan'
-import compression from 'compression'
-import cookieParser from 'cookie-parser'
-import http from 'http'
+// import express from 'express';
+// import morgan from 'morgan'
+// import compression from 'compression'
+// import cookieParser from 'cookie-parser'
+// import http from 'http'
 import path from 'path'
 import { randomUUID } from 'crypto'
 
@@ -10,46 +10,9 @@ import { log, warn, error, Verbose } from '../services.js'
 import Connector from './connector.js'
 import XmppAgent from '../swarm/xmpp-agent.js'
 import conf from '../conf.js'
+import webServer from './web-server.js'
 
 const verbose = Verbose('sd:bridge/webhook'); verbose('')
-
-// Express server setup
-let app = null;
-let server = null;
-
-function runExpressApp() {
-  if (!app) {
-    app = express();
-    app.use(compression());
-    app.use(cookieParser()) // for parsing cookie
-    app.use(express.json({ limit: '1mb' })) // for parsing application/json
-    app.use(express.urlencoded({ extended: true, limit: '1mb' })) // for parsing application/x-www-form-urlencoded
-    app.use(express.text({ limit: '1mb' }))
-    app.use(express.raw({ limit: '1mb' }))
-    app.use(morgan('tiny'));
-    app.get('/', (req, res) => res.send('Selfdev Webhook Server'));
-
-    server = http.createServer(app);
-    server.listen(conf.webhook.port, () => {
-      log('Bridge Webhook server is listening on port', conf.webhook.port);
-      verbose(`  http://localhost:${conf.webhook.port}`);
-    });
-  }
-  return app;
-}
-
-function addRoute({ path, method = 'post', handler }) {
-  app[method](path, handler);
-}
-
-function removeRoute({ path, method = 'post' }) {
-  app._router.stack = app._router.stack.filter(layer => {
-    if (!layer.route) return true;
-    if (layer.route.path !== path) return true;
-    if (!layer.route.methods[method]) return true;
-    return false;
-  });
-}
 
 
 export default class Webhook extends Connector {
@@ -69,6 +32,7 @@ export default class Webhook extends Connector {
       handleRooms: this.bridge.options.webhook.enableRoom,
     });
 
+    this.path = null
     this.pendingResponses = null
   }
 
@@ -96,17 +60,17 @@ export default class Webhook extends Connector {
     verbose('Webhook started');
 
     try {
-      runExpressApp();
+      await webServer.start();
       this.pendingResponses = new Map();
 
       this.path = path.join(
-        '/' + this.bridge.userId._id.toString(),
+        '/wh/' + this.bridge.userId._id.toString(),
         this.bridge.options.webhook.endpoint
       );
       verbose('path:', this.path);
 
       /* -------------------- Webhook → XMPP (Outgoing) -------------------- */
-      addRoute({
+      webServer.addRoute({
         path: this.path,
         method: this.bridge.options.webhook.method,
         handler: async (req, res) => {
@@ -219,10 +183,11 @@ export default class Webhook extends Connector {
 
   async stop() {
     super.stop();
-    removeRoute({
+    webServer.removeRoute({
       path: this.path,
       method: this.bridge.options.webhook.method,
     });
+    webServer.stop();
     this.xmppAgent.stop();
     this.pendingResponses = null
     verbose('Webhook stopped');
