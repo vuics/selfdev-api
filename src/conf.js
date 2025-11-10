@@ -530,6 +530,10 @@ const conf = {
   webhook: {
     port: num(process.env.WEBHOOK_PORT || 6370),
   },
+
+  mcp: {
+    port: num(process.env.MCP_PORT || 6371),
+  },
 }
 
 export default conf

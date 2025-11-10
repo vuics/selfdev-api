@@ -12,6 +12,7 @@
     "workers:autopayment": "NODE_ENV=production DEBUG=sd:* node ./src/workers/autopayment.js",
     "swarm": "NODE_ENV=development DEBUG=sd:* nodemon --exec node -- ./src/swarm/index.js",
     "bridge": "NODE_ENV=development DEBUG=sd:* nodemon --exec node -- ./src/bridge/index.js",
+    "mcp:inspector": "DANGEROUSLY_OMIT_AUTH=true  npx @modelcontextprotocol/inspector --server-url http://localhost:6371/mcp",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -24,6 +25,7 @@
   "license": "UNLICENSED",
   "dependencies": {
     "@hyperledger/firefly-sdk": "^1.3.3",
+    "@modelcontextprotocol/sdk": "^1.21.1",
     "@xmpp/client": "^0.13.6",
     "arangojs": "^5.8.0",
     "axios": "^1.12.2",
@@ -83,6 +85,7 @@
     "stripe": "^18.2.1",
     "tar": "^7.5.1",
     "transliteration": "^2.3.5",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "zod": "^3.25.76"
   }
 }
