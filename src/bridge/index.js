@@ -14,7 +14,6 @@ import Messengers from './messengers.js'
 import Phone from './phone.js'
 import Scheduler from './scheduler.js'
 import Webhook from './webhook.js'
-import Curl from './curl.js'
 import Email from './email.js'
 import Mcp from './mcp.js'
 
@@ -28,7 +27,6 @@ const connectorClasses = {
   "phone": Phone,
   "scheduler": Scheduler,
   "webhook": Webhook,
-  "curl": Curl,
   "email": Email,
   "mcp": Mcp,
 }

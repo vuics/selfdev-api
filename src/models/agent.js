@@ -262,6 +262,13 @@ export default mongoose.model(
           // },
         },
       },
+
+      curl: {
+        method: String,
+        url: String,
+        headers: String,
+        timeoutSec: Number,
+      },
     },
   })
     .plugin(mongooseTimestamp)

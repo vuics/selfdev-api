@@ -120,13 +120,6 @@ const WebhookSchema = new mongoose.Schema({
   requestIdKey: String,
 }, { _id: false })
 
-const CurlSchema = new mongoose.Schema({
-  method: String,
-  url: String,
-  headers: String,
-  timeoutSec: Number,
-}, { _id: false })
-
 const EmailSchema = new mongoose.Schema({
   imap: {
     host: String,
@@ -180,7 +173,6 @@ const BridgeSchema = new mongoose.Schema({
     phone: PhoneSchema,
     scheduler: SchedulerSchema,
     webhook: WebhookSchema,
-    curl: CurlSchema,
     email: EmailSchema,
     mcp: McpSchema,
   },

@@ -11,6 +11,7 @@ import { sleep } from '../utils/helper.js'
 
 const verbose = Verbose('sd:swarm/mcp-v1'); verbose('')
 
+
 export default class McpV1 extends XmppAgent {
   constructor (args) {
     super(args)

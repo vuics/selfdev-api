@@ -8,6 +8,7 @@ import SystemV1 from './system-v1.js'
 import TransformV1 from './transform-v1.js'
 import ProxyV1 from './proxy-v1.js'
 import McpV1 from './mcp-v1.js'
+import CurlV1 from './curl-v1.js'
 import { sleep } from '../utils/helper.js'
 
 import '../mongo.js'
@@ -27,6 +28,7 @@ const archetypeClasses = {
   "transform-v1.0": TransformV1,
   "proxy-v1.0": ProxyV1,
   "mcp-v1.0": McpV1,
+  "curl-v1.0": CurlV1,
 }
 
 const runningXmppAgents = {};
