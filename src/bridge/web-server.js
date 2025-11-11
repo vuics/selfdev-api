@@ -31,8 +31,24 @@ class WebServer {
         cors({
           origin: '*', // Configure appropriately for production, for example:
           // origin: ['https://your-remote-domain.com', 'https://your-other-remote-domain.com'],
-          exposedHeaders: ['Mcp-Session-Id'],
-          allowedHeaders: ['Content-Type', 'mcp-session-id']
+          // exposedHeaders: ['Mcp-Session-Id'],
+          // allowedHeaders: ['Content-Type', 'mcp-session-id']
+          // methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+          allowedHeaders: [
+            'Content-Type',
+            'Authorization',
+            'mcp-protocol-version',
+            'mcp-session',
+            'mcp-session-id',
+            'mcp-client',
+            'mcp-server',
+          ],
+          exposedHeaders: [
+            'Content-Type',
+            'mcp-protocol-version',
+            'mcp-session',
+            'Mcp-Session-Id',
+          ],
         })
       );
 

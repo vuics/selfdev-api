@@ -66,10 +66,13 @@ export default class Mcp extends Connector {
               'handler path:', this.path,
               ', method: post',
               ', query:', req.query,
-              ', body:', req.body
+              ', body:', req.body,
+              ', headers:', req.headers,
             );
 
             const sessionId = req.headers['mcp-session-id']
+            verbose('post sessionId:', sessionId)
+
             let transport = null
 
             if (sessionId && transports[sessionId]) {
@@ -87,6 +90,10 @@ export default class Mcp extends Connector {
                 // locally, make sure to set:
                 // enableDnsRebindingProtection: true,
                 // allowedHosts: ['127.0.0.1'],
+
+                enableDnsRebindingProtection: true,
+                // allowedHosts: ['127.0.0.1', 'dev.local', 'selfdev-swarm.dev.local', 'selfdev-bridge.dev.local', 'selfdev-bridge.dev.local:6370'],
+                // allowedOrigins: ['http://localhost:6274', 'https://selfdev-swarm.dev.local', 'https://dev.local', 'https://hyag.ru', 'https://hyag.org'],
               });
 
               // Clean up transport when closed
@@ -172,7 +179,7 @@ export default class Mcp extends Connector {
               );
               verbose('Registered MCP tool: send');
 
-              // Connect to the MCP server
+              verbose('Connecting to the MCP server')
               await mcpServer.connect(transport);
             } else {
               // Invalid request
@@ -200,6 +207,7 @@ export default class Mcp extends Connector {
       // Reusable handler for GET and DELETE requests
       const handleSessionRequest = async (req, res) => {
         const sessionId = req.headers['mcp-session-id']
+        verbose('get/delete sessionId:', sessionId)
         if (!sessionId || !transports[sessionId]) {
           res.status(400).send('Invalid or missing session ID');
           return;
