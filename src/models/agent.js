@@ -37,6 +37,26 @@ export default mongoose.model(
         session: String,
       },
 
+      maptrix: {
+        mapId: {
+          type: ObjectId,
+          required: false,
+          ref: 'Map'
+        },
+        input: Mixed,
+        output: [String],
+        parseJson: Boolean,
+        promptKey: String,
+        sendStatus: Boolean,
+      },
+
+      mcp: {
+        transport: String,
+        url: String,
+        command: String,
+        args: [String],
+      },
+
       system: {
         operation: String,
         model: String,
@@ -241,19 +261,6 @@ export default mongoose.model(
           //   valueFromVault: String,
           // },
         },
-      },
-
-      maptrix: {
-        mapId: {
-          type: ObjectId,
-          required: false,
-          ref: 'Map'
-        },
-        input: Mixed,
-        output: [String],
-        parseJson: Boolean,
-        promptKey: String,
-        sendStatus: Boolean,
       },
     },
   })
