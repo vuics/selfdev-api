@@ -25,12 +25,12 @@ export default class Scheduler extends Connector {
       agent: {
         options: {
           name: this.bridge.options.name,
-          joinRooms: [this.bridge.options.scheduler.joinRoom],
+          joinRooms: [this.bridge.options.joinRoom],
         },
         userId: this.bridge.userId,
       },
-      handleChat: this.bridge.options.scheduler.enablePersonal,
-      handleRooms: this.bridge.options.scheduler.enableRoom,
+      handleChat: this.bridge.options.enablePersonal,
+      handleRooms: this.bridge.options.enableRoom,
     })
     this.task = null
   }
@@ -51,16 +51,16 @@ export default class Scheduler extends Connector {
             ', cron:', this.bridge.options.scheduler.cron,
             ', sends message:', this.bridge.options.scheduler.message,
           );
-          if (this.bridge.options.scheduler.enablePersonal) {
+          if (this.bridge.options.enablePersonal) {
             await this.xmppAgent.xmppClient.sendPersonalMessage({
-              recipient: this.bridge.options.scheduler.recipient,
+              recipient: this.bridge.options.recipient,
               prompt: this.bridge.options.scheduler.message,
             })
           }
-          if (this.bridge.options.scheduler.enableRoom) {
+          if (this.bridge.options.enableRoom) {
             await this.xmppAgent.xmppClient.sendRoomMessage({
-              room: this.bridge.options.scheduler.joinRoom,
-              recipient: this.bridge.options.scheduler.recipientNickname,
+              room: this.bridge.options.joinRoom,
+              recipient: this.bridge.options.recipientNickname,
               prompt: this.bridge.options.scheduler.message,
               mucHost: conf.xmpp.mucHost,
             })

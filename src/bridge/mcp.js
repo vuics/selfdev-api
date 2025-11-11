@@ -29,12 +29,12 @@ export default class Mcp extends Connector {
       agent: {
         options: {
           name: this.bridge.options.name,
-          joinRooms: this.bridge.options.mcp?.joinRooms || [],
+          joinRooms: [this.bridge.options.joinRoom],
         },
         userId: this.bridge.userId,
       },
-      handleChat: this.bridge.options.mcp?.enablePersonal ?? true,
-      handleRooms: this.bridge.options.mcp?.enableRoom ?? false,
+      handleChat: this.bridge.options.enablePersonal,
+      handleRooms: this.bridge.options.enableRoom,
     });
 
     this.path = null
@@ -171,16 +171,16 @@ export default class Mcp extends Connector {
 
               verbose('Sending to XMPP; requestId:', requestId, ', prompt:', prompt);
 
-              if (this.bridge.options.mcp.enablePersonal) {
+              if (this.bridge.options.enablePersonal) {
                 await this.xmppAgent.xmppClient.sendPersonalMessage({
-                  recipient: this.bridge.options.mcp.recipient,
+                  recipient: this.bridge.options.recipient,
                   prompt,
                 });
               }
-              if (this.bridge.options.mcp.enableRoom) {
+              if (this.bridge.options.enableRoom) {
                 await this.xmppAgent.xmppClient.sendRoomMessage({
-                  room: this.bridge.options.mcp.joinRoom,
-                  recipient: this.bridge.options.mcp?.recipientNickname,
+                  room: this.bridge.options.joinRoom,
+                  recipient: this.bridge.options.recipientNickname,
                   prompt,
                   mucHost: conf.xmpp.mucHost,
                 });

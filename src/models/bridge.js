@@ -99,12 +99,6 @@ const PhoneSchema = new mongoose.Schema({
   directoryNumber: String,
   directoryPassword: String,
 
-  recipient: String,
-  recipientNickname: String,
-  joinRoom: String,
-  enablePersonal: Boolean,
-  enableRoom: Boolean,
-
   welcomeMessage: String,
 }, { _id: false })
 
@@ -115,12 +109,6 @@ const SchedulerSchema = new mongoose.Schema({
   timezone: String,
   // maxExecutions: Number,
   maxRandomDelay: Number,
-
-  recipient: String,
-  recipientNickname: String,
-  joinRoom: String,
-  enablePersonal: Boolean,
-  enableRoom: Boolean,
 }, { _id: false })
 
 
@@ -130,12 +118,6 @@ const WebhookSchema = new mongoose.Schema({
   timeoutSec: Number,
   setRequestId: Boolean,
   requestIdKey: String,
-
-  recipient: String,
-  recipientNickname: String,
-  joinRoom: String,
-  enablePersonal: Boolean,
-  enableRoom: Boolean,
 }, { _id: false })
 
 const CurlSchema = new mongoose.Schema({
@@ -143,12 +125,6 @@ const CurlSchema = new mongoose.Schema({
   url: String,
   headers: String,
   timeoutSec: Number,
-
-  // recipient: String,
-  // recipientNickname: String,
-  // joinRoom: String,
-  // enablePersonal: Boolean,
-  // enableRoom: Boolean,
 }, { _id: false })
 
 const EmailSchema = new mongoose.Schema({
@@ -169,12 +145,6 @@ const EmailSchema = new mongoose.Schema({
   pollSec: Number,
   defaultRecipient: String,
   defaultSubject: String,
-
-  recipient: String,
-  recipientNickname: String,
-  joinRoom: String,
-  enablePersonal: Boolean,
-  enableRoom: Boolean,
 }, { _id: false })
 
 const McpSchema = new mongoose.Schema({
@@ -182,12 +152,6 @@ const McpSchema = new mongoose.Schema({
   timeoutSec: Number,
   // setRequestId: Boolean,
   // requestIdKey: String,
-
-  recipient: String,
-  recipientNickname: String,
-  joinRoom: String,
-  enablePersonal: Boolean,
-  enableRoom: Boolean,
 }, { _id: false })
 
 const BridgeSchema = new mongoose.Schema({
@@ -204,6 +168,13 @@ const BridgeSchema = new mongoose.Schema({
   options: {
     name: { type: String, required: true }, // unique name within user scope
     description: String,
+
+    enablePersonal: Boolean,
+    recipient: String,
+
+    enableRoom: Boolean,
+    recipientNickname: String,
+    joinRoom: String,
 
     messengers: MessengersSchema,
     phone: PhoneSchema,

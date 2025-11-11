@@ -172,12 +172,12 @@ export default class Email extends Connector {
       agent: {
         options: {
           name: this.bridge.options.name,
-          joinRooms: [this.bridge.options.email.joinRoom],
+          joinRooms: [this.bridge.options.joinRoom],
         },
         userId: this.bridge.userId,
       },
-      handleChat: this.bridge.options.email.enablePersonal,
-      handleRooms: this.bridge.options.email.enableRoom,
+      handleChat: this.bridge.options.enablePersonal,
+      handleRooms: this.bridge.options.enableRoom,
     })
 
     this.mailClient = null
@@ -374,23 +374,20 @@ export default class Email extends Connector {
           // FIXME:
           // const xmppAttachments = await this._convertAttachmentsToXmpp(attachments)
 
-          // ✅ Send personal message
-          if (this.bridge.options.email.enablePersonal && this.bridge.options.email.recipient) {
+          if (this.bridge.options.enablePersonal) {
             await this.xmppAgent.xmppClient.sendPersonalMessage({
-              recipient: this.bridge.options.email.recipient,
+              recipient: this.bridge.options.recipient,
               prompt: emailText,
 
               // FIXME:
               // attachments: xmppAttachments.length ? xmppAttachments : undefined,
             });
-            log(`📤 Sent email UID ${uid} to XMPP recipient ${this.bridge.options.email.recipient}.`);
+            log(`📤 Sent email UID ${uid} to XMPP recipient ${this.bridge.options.recipient}.`);
           }
-
-          // ✅ Send to group chat (room)
-          if (this.bridge.options.email.enableRoom && this.bridge.options.email.joinRoom) {
+          if (this.bridge.options.enableRoom) {
             await this.xmppAgent.xmppClient.sendRoomMessage({
-              room: this.bridge.options.email.joinRoom,
-              recipient: this.bridge.options.email.recipientNickname,
+              room: this.bridge.options.joinRoom,
+              recipient: this.bridge.options.recipientNickname,
               mucHost: conf.xmpp.mucHost,
               prompt: emailText,
 

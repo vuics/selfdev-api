@@ -24,12 +24,12 @@ export default class Curl extends Connector {
       agent: {
         options: {
           name: this.bridge.options.name,
-          joinRooms: [this.bridge.options.curl.joinRoom],
+          joinRooms: [this.bridge.options.joinRoom],
         },
         userId: this.bridge.userId,
       },
-      handleChat: this.bridge.options.curl.enablePersonal,
-      handleRooms: this.bridge.options.curl.enableRoom,
+      handleChat: this.bridge.options.enablePersonal,
+      handleRooms: this.bridge.options.enableRoom,
     });
   }
 
@@ -85,16 +85,16 @@ export default class Curl extends Connector {
           verbose('requestData:', requestData)
           const response = await this.request(requestData)
 
-          // if (this.bridge.options.curl.enablePersonal) {
+          // if (this.bridge.options.enablePersonal) {
           //   await this.xmppAgent.xmppClient.sendPersonalMessage({
-          //     recipient: this.bridge.options.curl.recipient,
+          //     recipient: this.bridge.options.recipient,
           //     prompt: JSON.stringify(response),
           //   });
           // }
-          // if (this.bridge.options.curl.enableRoom) {
+          // if (this.bridge.options.enableRoom) {
           //   await this.xmppAgent.xmppClient.sendRoomMessage({
-          //     room: this.bridge.options.curl.joinRoom,
-          //     recipient: this.bridge.options.curl.recipientNickname,
+          //     room: this.bridge.options.joinRoom,
+          //     recipient: this.bridge.options.recipientNickname,
           //     prompt: JSON.stringify(response),
           //     mucHost: conf.xmpp.mucHost,
           //   });

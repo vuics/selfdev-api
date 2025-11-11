@@ -138,12 +138,12 @@ export default class Phone extends Connector {
       agent: {
         options: {
           name: this.bridge.options.name,
-          joinRooms: [this.bridge.options.phone.joinRoom],
+          joinRooms: [this.bridge.options.joinRoom],
         },
         userId: this.bridge.userId,
       },
-      handleChat: this.bridge.options.phone.enablePersonal,
-      handleRooms: this.bridge.options.phone.enableRoom,
+      handleChat: this.bridge.options.enablePersonal,
+      handleRooms: this.bridge.options.enableRoom,
     })
   }
 
@@ -728,18 +728,18 @@ export default class Phone extends Connector {
                 await removeFile(recordingFile);
               }
 
-              if (this.bridge.options.phone.enablePersonal) {
+              if (this.bridge.options.enablePersonal) {
                 verbose('sending personal message:', text)
                 await this.xmppAgent.xmppClient.sendPersonalMessage({
-                  recipient: this.bridge.options.phone.recipient,
+                  recipient: this.bridge.options.recipient,
                   prompt: text,
                 })
               }
-              if (this.bridge.options.phone.enableRoom) {
+              if (this.bridge.options.enableRoom) {
                 verbose('sending group message:', text)
                 await this.xmppAgent.xmppClient.sendRoomMessage({
-                  room: this.bridge.options.phone.joinRoom,
-                  recipient: this.bridge.options.phone.recipientNickname,
+                  room: this.bridge.options.joinRoom,
+                  recipient: this.bridge.options.recipientNickname,
                   prompt: text,
                   mucHost: conf.xmpp.mucHost,
                 })
@@ -870,16 +870,16 @@ export default class Phone extends Connector {
           const sipBody = extractSIPBody(body)
           log('sipBody:', sipBody)
 
-          if (this.bridge.options.phone.enablePersonal) {
+          if (this.bridge.options.enablePersonal) {
             await this.xmppAgent.xmppClient.sendPersonalMessage({
-              recipient: this.bridge.options.phone.recipient,
+              recipient: this.bridge.options.recipient,
               prompt: text,
             })
           }
-          if (this.bridge.options.phone.enableRoom) {
+          if (this.bridge.options.enableRoom) {
             await this.xmppAgent.xmppClient.sendRoomMessage({
-              room: this.bridge.options.phone.joinRoom,
-              recipient: this.bridge.options.phone.recipientNickname,
+              room: this.bridge.options.joinRoom,
+              recipient: this.bridge.options.recipientNickname,
               prompt: sipBody,
               mucHost: conf.xmpp.mucHost,
             })

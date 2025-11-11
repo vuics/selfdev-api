@@ -23,12 +23,12 @@ export default class Webhook extends Connector {
       agent: {
         options: {
           name: this.bridge.options.name,
-          joinRooms: [this.bridge.options.webhook.joinRoom],
+          joinRooms: [this.bridge.options.joinRoom],
         },
         userId: this.bridge.userId,
       },
-      handleChat: this.bridge.options.webhook.enablePersonal,
-      handleRooms: this.bridge.options.webhook.enableRoom,
+      handleChat: this.bridge.options.enablePersonal,
+      handleRooms: this.bridge.options.enableRoom,
     });
 
     this.path = null
@@ -89,16 +89,16 @@ export default class Webhook extends Connector {
             verbose('requestIdKey:', this.bridge.options.webhook.requestIdKey)
 
             // Send to XMPP
-            if (this.bridge.options.webhook.enablePersonal) {
+            if (this.bridge.options.enablePersonal) {
               await this.xmppAgent.xmppClient.sendPersonalMessage({
-                recipient: this.bridge.options.webhook.recipient,
+                recipient: this.bridge.options.recipient,
                 prompt: text || JSON.stringify(payload),
               });
             }
-            if (this.bridge.options.webhook.enableRoom) {
+            if (this.bridge.options.enableRoom) {
               await this.xmppAgent.xmppClient.sendRoomMessage({
-                room: this.bridge.options.webhook.joinRoom,
-                recipient: this.bridge.options.webhook.recipientNickname,
+                room: this.bridge.options.joinRoom,
+                recipient: this.bridge.options.recipientNickname,
                 prompt: text || JSON.stringify(payload),
                 mucHost: conf.xmpp.mucHost,
               });
