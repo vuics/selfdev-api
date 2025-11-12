@@ -269,6 +269,17 @@ export default mongoose.model(
         headers: String,
         timeoutSec: Number,
       },
+
+      browseruse: {
+        model: {
+          provider: String, // Name of the LLM model provider such as 'openai' or 'anthropic'
+          name: String, // Name of the LLM such as 'gpt-4o-mini' or 'claude-3-5-sonnet-20240620'
+          apiKey: {
+            valueFromVault: String,
+          },
+        },
+      },
+
     },
   })
     .plugin(mongooseTimestamp)
