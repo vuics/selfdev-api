@@ -46,7 +46,7 @@ const NoteNodeDataSchema = new mongoose.Schema({
   stash: String,            // Note stash for text (used for diff text and stash)
   stashAttachments: [String],  // List of urls of attached files in stash
   waitRecipient: String,    // Xmpp address of the recipient to which we sent a message and waiting for reply
-  kind: { type: String, enum: ['markdown', 'code', 'raw', null] }, // Kind the node content, one of values: 'markdown', 'code', 'raw' or `undefined` (plain)
+  kind: { type: String, enum: ['markdown', 'code', 'raw', 'form', null] }, // Kind the node content, one of values: 'markdown', 'code', 'raw', 'form', or `undefined` (plain)
   editing: Boolean,         // Editing/viewing mode switch
   diffing: Boolean,         // If the note is in the diff mode (diff of text and stash with their attachemnts)
   slide: Boolean,           // If the note is slide in the deck
@@ -54,6 +54,7 @@ const NoteNodeDataSchema = new mongoose.Schema({
   color: String,            // Text color
   backgroundColor: String,  // Background color
   lang: String,             // Programming language for notes with code kind
+  minimized: Boolean,       // Note size was minimized
 }, { _id: false, strict: false })
 
 const GroupNodeDataSchema = new mongoose.Schema({
