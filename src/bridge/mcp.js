@@ -286,7 +286,9 @@ export default class Mcp extends Connector {
       path: this.path,
       method: 'delete',
     });
-    webServer.stop();
+
+    // NOTE: Keep the server running since it might be used by other bridges
+    // webServer.stop();
 
     // Attempt to stop XMPP agent
     try {

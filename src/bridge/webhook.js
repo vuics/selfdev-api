@@ -157,7 +157,10 @@ export default class Webhook extends Connector {
       path: this.path,
       method: this.bridge.options.webhook.method,
     });
-    webServer.stop();
+
+    // NOTE: Keep the server running since it might be used by other bridges
+    // webServer.stop();
+
     this.xmppAgent.stop();
     verbose('Webhook stopped');
   }

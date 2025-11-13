@@ -147,6 +147,12 @@ const McpSchema = new mongoose.Schema({
   // requestIdKey: String,
 }, { _id: false })
 
+const WebappSchema = new mongoose.Schema({
+  endpoint: String,
+  lowdefyYaml: String,
+  regenerate: Boolean,
+}, { _id: false })
+
 const BridgeSchema = new mongoose.Schema({
   userId: {
     type: ObjectId,
@@ -175,6 +181,7 @@ const BridgeSchema = new mongoose.Schema({
     webhook: WebhookSchema,
     email: EmailSchema,
     mcp: McpSchema,
+    webapp: WebappSchema,
   },
 
   logs: String

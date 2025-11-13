@@ -4,6 +4,7 @@ import compression from 'compression'
 import cookieParser from 'cookie-parser'
 import http from 'http'
 import cors from 'cors';
+import { createProxyMiddleware } from "http-proxy-middleware";
 
 import { log, warn, error, Verbose } from '../services.js'
 import conf from '../conf.js'
@@ -15,11 +16,13 @@ class WebServer {
     verbose('WebServer constructed');
     this.app = null;
     this.server = null;
+    this.proxies = new Map();
   }
 
   async start() {
     if (!this.app) {
       this.app = express();
+
       this.app.use(compression());
       this.app.use(cookieParser()) // for parsing cookie
       this.app.use(express.json({ limit: '1mb' })) // for parsing application/json
@@ -27,6 +30,7 @@ class WebServer {
       this.app.use(express.text({ limit: '1mb' }))
       this.app.use(express.raw({ limit: '1mb' }))
       this.app.use(morgan('tiny'));
+
       this.app.use(
         cors({
           origin: '*', // Configure appropriately for production, for example:
@@ -52,6 +56,15 @@ class WebServer {
         })
       );
 
+      // Dynamic router
+      this.app.use((req, res, next) => {
+        const proxy = this.proxies.get(req.headers.host);
+        if (proxy) {
+          return proxy(req, res, next);
+        }
+        next();
+      });
+
       this.app.get('/', (req, res) => res.send('Selfdev Webhook Server'));
 
       this.server = http.createServer(this.app);
@@ -76,9 +89,31 @@ class WebServer {
     });
   }
 
+  addProxy({ host, target }) {
+    const proxy = createProxyMiddleware({
+      pathFilter: host,
+      target,
+      changeOrigin: true,
+      ws: true,
+      // logLevel: "silent",
+      // logLevel: "warn",
+      logLevel: "warn",
+    });
+    this.proxies.set(host, proxy);
+    log(`✅ Added middleware for ${host} → ${target}`);
+  }
+
+  removeProxy({ host }) {
+    if (this.proxies.delete(host)) {
+      log(`🛑 Removed middleware for ${host}`);
+    } else {
+      log(`⚠️ No middleware found for ${host}`);
+    }
+  }
+
   async stop() {
     // Nothig
-    // Keep the server running since it might be used by other bridges
+    // NOTE: Keep the server running since it might be used by other bridges
   }
 }
 

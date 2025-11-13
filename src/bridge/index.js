@@ -16,6 +16,7 @@ import Scheduler from './scheduler.js'
 import Webhook from './webhook.js'
 import Email from './email.js'
 import Mcp from './mcp.js'
+import Webapp from './webapp.js'
 
 const verbose = Verbose('sd:bridge/index'); verbose('')
 
@@ -29,6 +30,7 @@ const connectorClasses = {
   "webhook": Webhook,
   "email": Email,
   "mcp": Mcp,
+  "webapp": Webapp,
 }
 
 const runningConnectorBridges = {};
