@@ -9,13 +9,44 @@ import Connector from './connector.js'
 import XmppAgent from '../swarm/xmpp-agent.js'
 import conf from '../conf.js'
 import webServer from './web-server.js'
+import { sleep } from '../utils/helper.js'
 
 const verbose = Verbose('sd:bridge/webapp'); verbose('')
 
-// Example webapp call with curl:
-//   curl -X POST http://localhost:6370/wh/679b3c9a6e26f022ca69515b/webapp/post \
-//     -H "Content-Type: application/json" \
-//     -d '{"key":"value", "key2": "value222" }'
+let availablePort = conf.webapp.portStart
+
+const fallbackCode = `
+lowdefy: 4.5.2
+name: HyperAgency Web App Bridge Fallback
+
+pages:
+  - id: fallback
+    type: PageHeaderMenu
+    properties:
+      title: Web App Fallback
+    areas:
+      content:
+        justify: center
+        blocks:
+          - id: content_card
+            type: Card
+            style:
+              maxWidth: 800
+            blocks:
+              - id: content
+                type: Result
+                properties:
+                  title: Web App Bridge Fallback
+                  subTitle: Please, add the code of the web app
+      footer:
+        blocks:
+          - id: footer
+            type: Paragraph
+            properties:
+              type: secondary
+              content: |
+                Made by a HyperAgency and Lowdefy
+`
 
 export default class Webapp extends Connector {
   constructor(args) {
@@ -35,13 +66,19 @@ export default class Webapp extends Connector {
     });
 
     this.path = null
+    this.port = null
+    this.lowdefy = null
   }
 
   async start() {
     super.start();
-    verbose('Webapp started');
+    verbose('Webapp starting...');
 
     try {
+      this.lowdefy = null
+      this.lowdefyIsReady = false
+      this.lowdefyIsFailed = false
+
       const dirname = `/opt/webapp-bridges/${this.bridge.options.name}/`
       verbose('dirname:', dirname)
       if (!fs.existsSync(dirname)) {
@@ -57,37 +94,35 @@ export default class Webapp extends Connector {
       verbose('dirname created:', devDirname)
 
       const filename = path.join(dirname, 'lowdefy.yaml')
-      verbose('lowdefyYaml:', this.bridge.options.webapp.lowdefyYaml)
-      await fs.promises.writeFile(filename, this.bridge.options.webapp.lowdefyYaml, 'utf-8');
+      const lowdefyYaml = this.bridge.options.webapp.updatedCode || this.bridge.options.webapp.defaultCode || fallbackCode
+      verbose('lowdefyYaml:', lowdefyYaml)
+      await fs.promises.writeFile(filename, lowdefyYaml, 'utf-8');
       verbose('file is written:', filename)
 
 
       this.collectLogs = true
       this.logs = '';
 
-      // FIXME: use dynamic ports
-      // const command = 'pnpx lowdefy@4 dev --port 3001';
+      this.port = availablePort++
+      log('this.port:', this.port, ', availablePort:', availablePort)
+
       const command = 'pnpx'
       const args = [
         'lowdefy', 'dev',
-        '--port', '3001',
+        '--port', this.port.toString(),
         '--config-directory', dirname,
         '--log-level', 'info',
         '--no-open',
         '--disable-telemetry',
       ];
-      // verbose('process.env:', process.env)
       const opts = {
         shell: true,
         cwd: dirname,
         env: {
-          // ...process.env,        // inherit parent env vars
           NODE_ENV: 'production',
-          // NODE_ENV: 'development',
           PATH: process.env.PATH,
           PNPM_HOME: process.env.PNPM_HOME,
         },
-        // stdio: 'inherit'
       }
       verbose('command:', command, ', args:', args, ', opts:', opts)
       this.lowdefy = spawn(command, args, opts);
@@ -100,6 +135,7 @@ export default class Webapp extends Connector {
       // Handle errors
       this.lowdefy.on('error', (err) => {
         error('Failed to start lowdefy:', err);
+        this.lowdefyIsFailed = true
       });
       // Handle exit
       this.lowdefy.on('exit', async (code, signal) => {
@@ -108,6 +144,7 @@ export default class Webapp extends Connector {
         } else {
           log(`Lowdefy was killed by signal ${signal}`);
         }
+        this.lowdefyIsFailed = true
         await this.saveLogs()
       });
       // Capture stdout
@@ -123,6 +160,16 @@ export default class Webapp extends Connector {
       this.lowdefy.stderr.on('data', async (data) => {
         if (this.collectLogs) {
           const text = data.toString();
+
+          if (text.includes('∙  ✓ Ready') ||
+              text.includes(`∙   - Local:        http://localhost:${this.port}`)) {
+            this.lowdefyIsReady = true
+          }
+          if (text.includes('Failed to start server') ||
+              text.includes('Error: listen EADDRINUSE: address already in use')) {
+            this.lowdefyIsFailed = true
+          }
+
           this.logs += text;
           console.error('stderr:', text); // optional: still print to console
           // await this.sendMessage({ prompt: 'stderr: ' + text })
@@ -130,6 +177,32 @@ export default class Webapp extends Connector {
       });
 
 
+      async function waitForLowdefy() {
+        while (true) {
+          if (this.lowdefyIsReady) {
+            log("Lowdefy is ready...");
+            return;
+          }
+
+          if (this.lowdefyIsFailed) {
+            warn("Lowdefy is failed. Stopping...");
+            await this.stop();
+            log("Restarting after 30 seconds sleep...");
+            await sleep(30_000);
+            log("Restarting now");
+            this.start();
+            throw new Error("Error: Lowdefy is failed");
+          }
+
+          await sleep(3_000);
+        }
+      }
+
+      log('Waiting for Lowdefy...')
+      await waitForLowdefy.call(this);
+
+
+      log('Starting proxy')
       await webServer.start();
 
       this.path = path.join(
@@ -137,6 +210,17 @@ export default class Webapp extends Connector {
         this.bridge.options.webapp.endpoint
       );
       verbose('path:', this.path);
+
+      // const proxyOptions = {
+      //   target: "http://localhost:3001",
+      //   changeOrigin: true,
+      //   logLevel: "debug",
+      //   router: {
+      //     [`http://localhost:6370/${this.path}`]: "http://localhost:3001",
+      //     'http://localhost:6370/_next': "http://localhost:3001/_next",
+      //   },
+      //   // pathFilter: [this.path, '/_next', '/api', '/icon.svg', '/manifest.webmanifest', '/.well-known' ]
+      // };
 
       const proxyOptions = {
         target: "http://localhost:3001",
@@ -147,7 +231,20 @@ export default class Webapp extends Connector {
           'http://localhost:6370/_next': "http://localhost:3001/_next",
         },
         // pathFilter: [this.path, '/_next', '/api', '/icon.svg', '/manifest.webmanifest', '/.well-known' ]
+        pathRewrite: (path) => path.replace(this.path, ''),
+
+        onProxyRes(proxyRes, req, res) {
+          verbose('onProxyRes proxyRes:', proxyRes)
+          const location = proxyRes.headers['location'];
+          verbose('location:', location)
+          if (location && location.startsWith('/')) {
+            // Rewrite redirects to stay under the same prefix
+            proxyRes.headers['location'] = this.path + location;
+            verbose('🔁 Rewrote redirect location:', location, '→', proxyRes.headers['location']);
+          }
+        },
       };
+
 
       // Main route
       webServer.app.use(this.path, createProxyMiddleware(proxyOptions));
@@ -157,23 +254,41 @@ export default class Webapp extends Connector {
       // /api/root
       // /manifest.webmanifest
 
+      log('Starting XMPP Agent')
 
       await this.xmppAgent.start();
 
       this.xmppAgent.chat = async ({ prompt } = {}) => {
         verbose('XMPP chat received:', prompt);
         try {
-          if (this.bridge.options.webapp.regenerate) {
-            verbose('lowdefyYaml from prompt:', prompt)
-            await fs.promises.writeFile(filename, prompt, 'utf-8');
+          let out = ''
+          if (!this.bridge.options.webapp.allowUpdates) {
+            out += 'Updates are not allowed.\n'
+          } else {
+            verbose('lowdefyCode from prompt:', prompt)
+            this.bridge.options.webapp.updatedCode = prompt
+
+            const bridgeDoc = await Bridge.findById(this.bridge._id)
+            if (bridgeDoc) {
+              bridgeDoc.options.webapp.updatedCode = this.bridge.options.webapp.updatedCode
+              bridgeDoc.markModified('options.webapp.updatedCode');
+              await bridgeDoc.save()
+              log('Saved updatedCode for bridge:', this.bridge._id, ":", this.bridge.options.name)
+            }
+
+            const lowdefyYaml = this.bridge.options.webapp.updatedCode || this.bridge.options.webapp.defaultCode || fallbackCode
+            verbose('lowdefyYaml:', lowdefyYaml)
+            await fs.promises.writeFile(filename, lowdefyYaml, 'utf-8');
             verbose('file is written:', filename)
           }
-          return `<iframe src="http://localhost:6370${this.path}" title="Web App Bridge" width="550" height="600"></iframe>`
+          // FIXME: replace localhost with domain name
+          out += `<iframe src="http://localhost:6370${this.path}" title="Web App Bridge" width="550" height="600"></iframe>\n`
+          return out
         } catch (err) {
           error('Failed to handle XMPP message:', prompt, err);
         }
-        return '';
       };
+      log('Started')
     } catch (err) {
       error('Error starting Webapp:', err);
     }

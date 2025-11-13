@@ -149,8 +149,9 @@ const McpSchema = new mongoose.Schema({
 
 const WebappSchema = new mongoose.Schema({
   endpoint: String,
-  lowdefyYaml: String,
-  regenerate: Boolean,
+  defaultCode: String,
+  allowUpdates: Boolean,
+  updatedCode: String,
 }, { _id: false })
 
 const BridgeSchema = new mongoose.Schema({

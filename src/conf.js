@@ -530,6 +530,10 @@ const conf = {
   webServer: {
     port: num(process.env.WEB_SERVER_PORT || 6370),
   },
+
+  webapp: {
+    portStart: num(process.env.WEBAPP_PORT_START || 3001),
+  },
 }
 
 export default conf
