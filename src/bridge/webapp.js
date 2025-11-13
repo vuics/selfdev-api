@@ -111,19 +111,21 @@ export default class Webapp extends Connector {
         await this.saveLogs()
       });
       // Capture stdout
-      this.lowdefy.stdout.on('data', (data) => {
+      this.lowdefy.stdout.on('data', async (data) => {
         if (this.collectLogs) {
           const text = data.toString();
           this.logs += text;
           console.log('stdout:', text); // optional: still print to console
+          // await this.sendMessage({ prompt: text })
         }
       });
       // Capture stderr
-      this.lowdefy.stderr.on('data', (data) => {
+      this.lowdefy.stderr.on('data', async (data) => {
         if (this.collectLogs) {
           const text = data.toString();
           this.logs += text;
           console.error('stderr:', text); // optional: still print to console
+          // await this.sendMessage({ prompt: 'stderr: ' + text })
         }
       });
 
@@ -161,7 +163,12 @@ export default class Webapp extends Connector {
       this.xmppAgent.chat = async ({ prompt } = {}) => {
         verbose('XMPP chat received:', prompt);
         try {
-
+          if (this.bridge.options.webapp.regenerate) {
+            verbose('lowdefyYaml from prompt:', prompt)
+            await fs.promises.writeFile(filename, prompt, 'utf-8');
+            verbose('file is written:', filename)
+          }
+          return `<iframe src="http://localhost:6370${this.path}" title="Web App Bridge" width="550" height="600"></iframe>`
         } catch (err) {
           error('Failed to handle XMPP message:', prompt, err);
         }
@@ -169,6 +176,23 @@ export default class Webapp extends Connector {
       };
     } catch (err) {
       error('Error starting Webapp:', err);
+    }
+  }
+
+  async sendMessage({ prompt }) {
+    if (this.bridge.options.enablePersonal) {
+      await this.xmppAgent.xmppClient.sendPersonalMessage({
+        recipient: this.bridge.options.recipient,
+        prompt,
+      });
+    }
+    if (this.bridge.options.enableRoom) {
+      await this.xmppAgent.xmppClient.sendRoomMessage({
+        room: this.bridge.options.joinRoom,
+        recipient: this.bridge.options.recipientNickname,
+        prompt,
+        mucHost: conf.xmpp.mucHost,
+      });
     }
   }
 
