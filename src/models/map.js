@@ -46,7 +46,7 @@ const NoteNodeDataSchema = new mongoose.Schema({
   stash: String,            // Note stash for text (used for diff text and stash)
   stashAttachments: [String],  // List of urls of attached files in stash
   waitRecipient: String,    // Xmpp address of the recipient to which we sent a message and waiting for reply
-  kind: { type: String, enum: ['markdown', 'code', 'raw', 'form', null] }, // Kind the node content, one of values: 'markdown', 'code', 'raw', 'form', or `undefined` (plain)
+  kind: { type: String, enum: ['markdown', 'code', 'raw', 'form', 'mdx', null] }, // Kind the node content, one of values, `undefined` means plain note (null stands for undefined in Mongoose)
   editing: Boolean,         // Editing/viewing mode switch
   diffing: Boolean,         // If the note is in the diff mode (diff of text and stash with their attachemnts)
   slide: Boolean,           // If the note is slide in the deck
