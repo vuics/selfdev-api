@@ -534,6 +534,14 @@ const conf = {
   webapp: {
     portStart: num(process.env.WEBAPP_PORT_START || 3001),
   },
+
+  opensearch: {
+    protocol: process.env.OPENSEARCH_PROTOCOL || 'https',
+    username: process.env.OPENSEARCH_USERNAME || 'admin',
+    password: process.env.OPENSEARCH_PASSWORD || 'freeS0cketKeep-1iveTimeout',
+    host: process.env.OPENSEARCH_HOST || 'opensearch-node1',
+    port: process.env.OPENSEARCH_PORT || '9200',
+  },
 }
 
 export default conf
@@ -560,6 +568,8 @@ export const revealConf = () => {
   delete publicConf.freeswitch.password
   delete publicConf.freeswitch.sshUsername
   delete publicConf.freeswitch.sshPassword
+
+  delete publicConf.opensearch.password
 
   return publicConf
 }

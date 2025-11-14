@@ -27,6 +27,7 @@
   "dependencies": {
     "@hyperledger/firefly-sdk": "^1.3.3",
     "@modelcontextprotocol/sdk": "^1.21.1",
+    "@opensearch-project/opensearch": "^3.5.1",
     "@xmpp/client": "^0.13.6",
     "arangojs": "^5.8.0",
     "axios": "^1.12.2",

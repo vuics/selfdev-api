@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Client } from '@opensearch-project/opensearch';
 
 import { log, warn, error, Verbose } from '../services.js'
 import Map from '../models/map.js'
@@ -7,6 +8,40 @@ import conf from '../conf.js'
 import { sleep } from '../utils/helper.js'
 
 const verbose = Verbose('sd:swarm/xmpp-agent'); verbose('')
+
+let opensearch = null
+try {
+  opensearch = new Client({
+    node: `${conf.opensearch.protocol}://${conf.opensearch.username}:${conf.opensearch.password}@${conf.opensearch.host}:${conf.opensearch.port}`,
+    ssl: {
+      ca: null,
+      rejectUnauthorized: false,
+    },
+  });
+  verbose('opensearch:', opensearch)
+} catch (err) {
+  error('Error connecting to OpenSearch:', err)
+}
+
+async function sendLog(level, message, meta = {}) {
+  verbose('sendLogs level:', level, ', message:', message, ', meta:', meta)
+  const doc = {
+    '@timestamp': new Date().toISOString(),
+    level,
+    message,
+    ...meta,
+  };
+
+  await opensearch.index({
+    index: 'logs',
+    body: doc,
+  });
+}
+
+
+
+
+
 
 export default class XmppAgent {
   constructor ({ agent, handleChat=true, handleRooms=true } = {}) {
@@ -27,6 +62,8 @@ export default class XmppAgent {
   }
 
   async start () {
+    sendLog('info', 'Starting agent', { agentId: this.agent._id.toString(), userId: this.agent.userId._id.toString() })
+
     this.xmppClient = new XmppClient()
     this.xmppClient.emitter.on('online', ({ jid }) => {
       this.connected({ jid })
@@ -118,6 +155,7 @@ export default class XmppAgent {
   }
 
   async stop () {
+    sendLog('info', 'Stopping agent', { agentId: this.agent._id.toString(), userId: this.agent.userId._id.toString() })
     this.xmppClient?.disconnect()
   }
 
@@ -143,6 +181,7 @@ export default class XmppAgent {
   }
 
   async chat({ prompt, replyFunc=()=>{} } = {}) {
+    sendLog('info', 'Agent received prompt', { agentId: this.agent._id.toString(), userId: this.agent.userId._id.toString() })
     // replyFunc({ content: prompt })
     return prompt
   }
