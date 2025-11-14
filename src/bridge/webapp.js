@@ -111,8 +111,8 @@ export default class Webapp extends Connector {
       verbose('file is written:', filename)
 
 
-      this.collectLogs = true
-      this.logs = '';
+      // this.collectLogs = true
+      // this.logs = '';
 
       this.port = availablePort++
       log('this.port:', this.port, ', availablePort:', availablePort)
@@ -138,10 +138,10 @@ export default class Webapp extends Connector {
       verbose('command:', command, ', args:', args, ', opts:', opts)
       this.lowdefy = spawn(command, args, opts);
 
-      setTimeout(async () => {
-        await this.saveLogs()
-        this.collectLogs = false
-      }, 300_000)
+      // setTimeout(async () => {
+      //   await this.saveLogs()
+      //   this.collectLogs = false
+      // }, 300_000)
 
       // Handle errors
       this.lowdefy.on('error', (err) => {
@@ -156,16 +156,16 @@ export default class Webapp extends Connector {
           log(`Lowdefy was killed by signal ${signal}`);
         }
         this.lowdefyIsFailed = true
-        await this.saveLogs()
+        // await this.saveLogs()
       });
       // Capture stdout
       this.lowdefy.stdout.on('data', async (data) => {
-        if (this.collectLogs) {
-          const text = data.toString();
-          this.logs += text;
-          console.log('stdout:', text); // optional: still print to console
-          // await this.sendMessage({ prompt: text })
-        }
+        // if (this.collectLogs) {
+        //   const text = data.toString();
+        //   this.logs += text;
+        //   console.log('stdout:', text); // optional: still print to console
+        //   // await this.sendMessage({ prompt: text })
+        // }
       });
       // Capture stderr
       this.lowdefy.stderr.on('data', async (data) => {
@@ -222,63 +222,32 @@ export default class Webapp extends Connector {
       );
       verbose('path:', this.path);
 
-      // NOTE: Below code works
-      //
       const proxyOptions = {
         target: `http://localhost:${this.port}`,
         changeOrigin: true,
         logLevel: "debug",
         router: {
-          [`http://localhost:${conf.webServer.port}/${this.path}`]: `http://localhost:${this.port}`,
-          [`http://localhost:${conf.webServer.port}/_next`]: `http://localhost:${this.port}/_next`,
+          // [`http://localhost:${conf.webServer.port}/${this.path}`]: `http://localhost:${this.port}`,
+          [this.bridge.options.webapp.domain]: `http://localhost:${this.port}`,
         },
-        // pathFilter: [this.path, '/_next', '/api', '/icon.svg', '/manifest.webmanifest', '/.well-known' ]
       };
 
-      // const proxyOptions = {
-      //   target: `http://localhost:${this.port}`,
-      //   changeOrigin: true,
-      //   logLevel: "debug",
-      //   router: {
-      //     [`http://localhost:${conf.webServer.port}/${this.path}`]: `http://localhost:${this.port}`,
-      //     [`http://localhost:${conf.webServer.port}/_next`]: `http://localhost:${this.port}/_next`,
-      //   },
-      //   // pathFilter: [this.path, '/_next', '/api', '/icon.svg', '/manifest.webmanifest', '/.well-known' ]
-      //   pathRewrite: (path) => path.replace(this.path, ''),
-
-      //   onProxyRes(proxyRes, req, res) {
-      //     verbose('onProxyRes proxyRes:', proxyRes)
-      //     const location = proxyRes.headers['location'];
-      //     verbose('location:', location)
-      //     if (location && location.startsWith('/')) {
-      //       // Rewrite redirects to stay under the same prefix
-      //       proxyRes.headers['location'] = this.path + location;
-      //       verbose('🔁 Rewrote redirect location:', location, '→', proxyRes.headers['location']);
-      //     }
-      //   },
-      // };
-
-
-      // Main route
+      verbose('proxyOptions:', proxyOptions)
       webServer.app.use(this.path, createProxyMiddleware(proxyOptions));
       webServer.app.use('/', createProxyMiddleware(proxyOptions));
-
-      // /icon.svg
-      // /api/root
-      // /manifest.webmanifest
 
       log('Starting XMPP Agent')
 
       await this.xmppAgent.start();
 
       this.xmppAgent.chat = async ({ prompt } = {}) => {
-        verbose('XMPP chat received:', prompt);
+        // verbose('XMPP chat received:', prompt);
         try {
           let out = ''
           if (!this.bridge.options.webapp.allowUpdates) {
             out += 'Updates are not allowed.\n'
           } else {
-            verbose('lowdefyCode from prompt:', prompt)
+            // verbose('lowdefyCode from prompt:', prompt)
             if (!this.state) {
               this.state = new State({
                 userId: this.bridge.userId,
@@ -287,16 +256,15 @@ export default class Webapp extends Connector {
             }
             this.state.bridge.webapp.updatedCode = prompt
             await this.state.save()
-            log('Saved updatedCode for bridge:', this.bridge.options.name,
-              ', with state:', this.state)
+            // log('Saved updatedCode for bridge:', this.bridge.options.name,
+            //   ', with state:', this.state)
 
             const lowdefyYaml = this.state.bridge.webapp.updatedCode || this.bridge.options.webapp.defaultCode || fallbackCode
             verbose('lowdefyYaml:', lowdefyYaml)
             await fs.promises.writeFile(filename, lowdefyYaml, 'utf-8');
             verbose('file is written:', filename)
           }
-          // FIXME: replace localhost with domain name
-          out += `<iframe src="http://localhost:${conf.webServer.port}${this.path}" title="Web App Bridge" width="550" height="600"></iframe>\n`
+          out += `<iframe src="${webServer.getProtocol()}://${this.bridge.options.webapp.domain}${this.path}" title="Web App Bridge" width="550" height="600"></iframe>\n`
           return out
         } catch (err) {
           error('Failed to handle XMPP message:', prompt, err);

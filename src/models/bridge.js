@@ -148,6 +148,7 @@ const McpSchema = new mongoose.Schema({
 }, { _id: false })
 
 const WebappSchema = new mongoose.Schema({
+  domain: String,
   endpoint: String,
   defaultCode: String,
   allowUpdates: Boolean,

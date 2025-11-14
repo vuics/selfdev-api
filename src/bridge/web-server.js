@@ -16,7 +16,8 @@ class WebServer {
     verbose('WebServer constructed');
     this.app = null;
     this.server = null;
-    // this.proxies = new Map();
+    this.protocol = null;
+    this.secure = null;
   }
 
   async start() {
@@ -56,16 +57,22 @@ class WebServer {
         })
       );
 
-      // // Dynamic router
-      // this.app.use((req, res, next) => {
-      //   const proxy = this.proxies.get(req.headers.host);
-      //   if (proxy) {
-      //     return proxy(req, res, next);
-      //   }
-      //   next();
-      // });
+      this.app.enable('trust proxy')
 
-      this.app.get('/', (req, res) => res.send('Selfdev Webhook Server'));
+      this.app.use((req, res, next) => {
+        // Detect if it uses http or https
+        if (!this.protocol && req.protocol) {
+          this.protocol = req.protocol
+          log('Uses protocol:', this.protocol)
+        }
+        if (!this.secure && req.secure) {
+          this.secure = req.secure
+          log('Uses secure:', this.secure)
+        }
+        next();
+      });
+
+      this.app.get('/about', (req, res) => res.send('Selfdev Webhook Server'));
 
       this.server = http.createServer(this.app);
       this.server.listen(conf.webServer.port, () => {
@@ -74,6 +81,15 @@ class WebServer {
       });
     }
     return this.app;
+  }
+
+  getProtocol() {
+    if (this.protocol !== null) {
+      return this.protocol
+    } else if (this.secure !== null) {
+      return this.secure ? 'https' : 'http'
+    }
+    return 'https'
   }
 
   addRoute({ path, method = 'post', handler }) {
@@ -88,28 +104,6 @@ class WebServer {
       return false;
     });
   }
-
-  // addProxy({ host, target }) {
-  //   const proxy = createProxyMiddleware({
-  //     pathFilter: host,
-  //     target,
-  //     changeOrigin: true,
-  //     ws: true,
-  //     // logLevel: "silent",
-  //     // logLevel: "warn",
-  //     logLevel: "warn",
-  //   });
-  //   this.proxies.set(host, proxy);
-  //   log(`✅ Added middleware for ${host} → ${target}`);
-  // }
-
-  // removeProxy({ host }) {
-  //   if (this.proxies.delete(host)) {
-  //     log(`🛑 Removed middleware for ${host}`);
-  //   } else {
-  //     log(`⚠️ No middleware found for ${host}`);
-  //   }
-  // }
 
   async stop() {
     // Nothig
