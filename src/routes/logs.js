@@ -15,29 +15,34 @@ router.get('/', checkAuth, async (req, res, next) => {
     if (!opensearch) {
       throw new Error('OpenSearch is not connected')
     }
+    const { skip, limit } = req.query
 
     const query = {
-      query: {
-        match: {
-          userId: {
-            query: req.user._id,
+      index: 'logs',
+      body: {
+        from: skip,
+        size: limit,
+        sort: [{ '@timestamp': "desc" }],
+        query: {
+          match: {
+            userId: {
+              query: req.user._id,
+            }
           }
         }
-      }
+      },
     }
-    verbose('query:', query)
-    const response = await opensearch.search({
-      index: 'logs',
-      body: query,
-    });
-    verbose('response:', inspect(response, { depth: null, colors: true }))
+    // verbose('query:', query)
+    const response = await opensearch.search(query);
+    // verbose('response:', inspect(response, { depth: null, colors: true }))
 
-    const result = response?.body?.hits?.hits?.map(h => h._source)
+    const rowData= response?.body?.hits?.hits?.map(h => h._source)
     const out = {
+      result: 'ok',
       query,
-      result,
+      rowData,
     };
-    verbose("logs out:", inspect(out, { depth: null, colors: true }))
+    // verbose("logs out:", inspect(out, { depth: null, colors: true }))
 
     res.json(out);
   } catch (err) {
