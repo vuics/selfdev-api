@@ -1,5 +1,6 @@
 import process from 'process';
 import { inspect } from 'util'
+import prom from 'prom-client'
 
 import { log, warn, error, Verbose } from '../services.js'
 import conf, { revealConf } from '../conf.js'
@@ -186,6 +187,40 @@ async function syncAgents() {
     log(`Retrieved ${agents.length} agent configurations`);
 
     const shouldRun = {};
+
+
+
+
+
+    // TODO: push better metrics
+    //       this is just experimental
+    //
+    // Create a counter metric
+    const counter = new prom.Counter({
+      name: 'agents_processed',
+      help: 'Counts something important',
+      labelNames: ['service']
+    });
+
+    // Increment the counter
+    counter.inc({ service: 'node-app' }, agents?.length || 0);
+    verbose('agents.length:', agents?.length || 0)
+    verbose('send metrics to prometheus:', counter)
+
+    // Configure Pushgateway
+    const { Pushgateway, register } = prom;
+    const promgw = new Pushgateway('http://pushgateway:9091');
+
+    // Push metrics to Pushgateway
+    promgw.pushAdd({ jobName: 'nodejs-app' }, (err, resp, body) => {
+      if (err) console.error('Push failed:', err);
+      else console.log('Metrics pushed successfully');
+    });
+
+
+
+
+
 
     for (const agent of agents) {
       // verbose('agent:', agent, ', isValid:', isValid({ agent }))

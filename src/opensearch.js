@@ -9,7 +9,7 @@ let opensearch = null
 
 try {
   opensearch = new Client({
-    node: `${conf.opensearch.protocol}://${conf.opensearch.username}:${conf.opensearch.password}@${conf.opensearch.host}:${conf.opensearch.port}`,
+    node: `http${conf.opensearch.secure && 's'}://${conf.opensearch.username}:${conf.opensearch.password}@${conf.opensearch.host}:${conf.opensearch.port}`,
     ssl: {
       ca: null,
       rejectUnauthorized: false,

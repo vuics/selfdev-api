@@ -536,7 +536,7 @@ const conf = {
   },
 
   opensearch: {
-    protocol: process.env.OPENSEARCH_PROTOCOL || 'https',
+    secure: bool(process.env.OPENSEARCH_SECURE || true),
     username: process.env.OPENSEARCH_USERNAME || 'admin',
     password: process.env.OPENSEARCH_PASSWORD || 'freeS0cketKeep-1iveTimeout',
     host: process.env.OPENSEARCH_HOST || 'opensearch-node1',
