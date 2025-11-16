@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { inspect } from 'util'
+import axios from 'axios'
 
 import { checkAuth } from '../middleware/check-auth.js';
 import { Verbose, log, warn, error } from '../services.js';
@@ -36,11 +37,45 @@ router.get('/', checkAuth, async (req, res, next) => {
     const response = await opensearch.search(query);
     // verbose('response:', inspect(response, { depth: null, colors: true }))
 
-    const rowData= response?.body?.hits?.hits?.map(h => h._source)
+    const logsData= response?.body?.hits?.hits?.map(h => h._source)
     const out = {
       result: 'ok',
       query,
-      rowData,
+      logsData,
+    };
+    // verbose("logs out:", inspect(out, { depth: null, colors: true }))
+
+    res.json(out);
+  } catch (err) {
+    error('Get logs error:', err)
+    res.status(500).json({ result: 'error', message: err.toString() });
+  }
+})
+
+router.get('/metrics', checkAuth, async (req, res, next) => {
+  try {
+    // verbose('dashboard body:', req.body);
+    // const { metricsName } = req.query
+
+    const now = Math.floor(Date.now() / 1000);
+    const start = now - 60 * 60; // last 1 hour
+    const query = {
+      params: {
+        query: 'agents_processed',
+        start,
+        end: now,
+        step: "30s",
+      },
+    }
+    verbose('query:', query)
+    // http://localhost:9090/api/v1/query?query=agents_processed
+    const response = await axios.get("http://prometheus:9090/api/v1/query_range", query);
+    // verbose('response:', inspect(response, { depth: null, colors: true }))
+
+    const out = {
+      result: 'ok',
+      query,
+      metrics: response.data,
     };
     // verbose("logs out:", inspect(out, { depth: null, colors: true }))
 
