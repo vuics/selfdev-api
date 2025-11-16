@@ -54,27 +54,33 @@ router.get('/', checkAuth, async (req, res, next) => {
 
 router.get('/metrics', checkAuth, async (req, res, next) => {
   try {
-    // verbose('dashboard body:', req.body);
-    // const { metricsName } = req.query
+    const { query,
+      // start, end, step
+    } = req.query
 
     const now = Math.floor(Date.now() / 1000);
     const start = now - 60 * 60; // last 1 hour
-    const query = {
-      params: {
-        query: 'agents_processed',
-        start,
-        end: now,
-        step: "30s",
-      },
+    const params = {
+      // query: 'agents_processed',
+      query,
+
+      start,
+      end: now,
+      step: "30s",
+      // start,
+      // end,
+      // step,
     }
     verbose('query:', query)
     // http://localhost:9090/api/v1/query?query=agents_processed
-    const response = await axios.get("http://prometheus:9090/api/v1/query_range", query);
+    const response = await axios.get("http://prometheus:9090/api/v1/query_range", {
+      params,
+    });
     // verbose('response:', inspect(response, { depth: null, colors: true }))
 
     const out = {
       result: 'ok',
-      query,
+      params,
       metrics: response.data,
     };
     // verbose("logs out:", inspect(out, { depth: null, colors: true }))
