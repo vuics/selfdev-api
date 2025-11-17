@@ -39,7 +39,7 @@ const runningXmppAgents = {};
 //
 // Configure Pushgateway
 const { Pushgateway, register } = prom;
-const promgw = new Pushgateway('http://pushgateway:9091');
+const promgw = new Pushgateway(conf.prometheus.pushgatewayUrl);
 
 // Create a counter metric
 const m_agents_processed = new prom.Counter({
