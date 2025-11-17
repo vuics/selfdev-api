@@ -15,7 +15,7 @@ try {
       rejectUnauthorized: false,
     },
   });
-  verbose('opensearch:', opensearch)
+  // verbose('opensearch:', opensearch)
 } catch (err) {
   error('Error connecting to OpenSearch:', err)
 }

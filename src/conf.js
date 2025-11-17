@@ -542,6 +542,11 @@ const conf = {
     host: process.env.OPENSEARCH_HOST || 'opensearch-node1',
     port: process.env.OPENSEARCH_PORT || '9200',
   },
+
+  prometheus: {
+    url: process.env.PROMETHEUS_URL || 'http://prometheus:9090',
+    pushgatewayUrl: process.env.PROMETHEUS_PUSHGATEWAY_URL || 'http://pushgateway:9091',
+  },
 }
 
 export default conf
