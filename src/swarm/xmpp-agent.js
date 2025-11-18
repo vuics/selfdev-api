@@ -5,7 +5,7 @@ import Map from '../models/map.js'
 import { XmppClient } from '../maptor.js'
 import conf from '../conf.js'
 import { sleep } from '../utils/helper.js'
-import opensearch, { sendLog } from '../opensearch.js'
+import { sendLog } from '../opensearch.js'
 
 const verbose = Verbose('sd:swarm/xmpp-agent'); verbose('')
 

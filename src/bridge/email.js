@@ -170,6 +170,8 @@ export default class Email extends Connector {
 
     this.xmppAgent = new XmppAgent({
       agent: {
+        _id: `bridge:${this.bridge._id.toString()}`,
+        archetype: `bridge:${this.bridge.connector}`,
         options: {
           name: this.bridge.options.name,
           joinRooms: [this.bridge.options.joinRoom],
@@ -236,16 +238,20 @@ export default class Email extends Connector {
     verbose(imapOptions)
     this.mailClient = new ImapFlow(imapOptions)
     // verbose('mailClient:', this.mailClient)
-    log('mailClient connected (before):', this.mailClient.connected) // boolean
-    log('mailClient authenticated (before):', this.mailClient.authenticated) // boolean
+    // log('mailClient connected (before):', this.mailClient.connected) // boolean
+    // log('mailClient authenticated (before):', this.mailClient.authenticated) // boolean
 
     await this.mailClient.connect()
     // await connectImap(this.mailClient)
     // await ensureConnected(this.mailClient)
 
-    log('IMAP connected:', opts.imap.host)
-    log('mailClient connected (after):', this.mailClient.connected) // boolean
-    log('mailClient authenticated (after):', this.mailClient.authenticated) // boolean
+    // log('IMAP connected:', opts.imap.host)
+    // log('mailClient connected (after):', this.mailClient.connected) // boolean
+    // log('mailClient authenticated (after):', this.mailClient.authenticated) // boolean
+
+    this.slog('info', 'IMAP client connected', {
+      host: opts.imap.host
+    })
 
     // setInterval(() => {
     //   const c = this.mailClient
@@ -266,8 +272,10 @@ export default class Email extends Connector {
       },
     })
     verbose('smtpTransporter:', this.smtpTransporter)
-
     log('SMTP ready:', opts.smtp.host)
+    this.slog('info', 'SMPT client connected', {
+      host: opts.smtp.host,
+    })
 
     /* ---------- POLLING LOOP ---------- */
     this.pollInterval = setInterval(() => this.checkInbox(), (opts.pollSec || 30) * 1000)
@@ -309,10 +317,14 @@ export default class Email extends Connector {
         verbose('mailOptions:', mailOptions)
         await this.smtpTransporter.sendMail(mailOptions)
         log('Email sent to:', mailOptions.to)
+        this.slog('debug', 'Email sent', {
+          to: mailOptions.to
+        })
       } catch (err) {
         error('Failed to send email from XMPP message:', err)
       }
     }
+    this.slog('debug', 'Bridge started')
   }
 
   async checkInbox() {
@@ -325,6 +337,9 @@ export default class Email extends Connector {
         // ✅ Search for all unseen (unread) messages
         const unseenUids = await this.mailClient.search({ seen: false });
         verbose(`Found ${unseenUids.length} unseen emails.`);
+        this.slog('info', 'Found unseen emails', {
+          number: unseenUids.length,
+        })
 
         for (const uid of unseenUids) {
           verbose(`Processing email UID: ${uid}`);
@@ -370,6 +385,11 @@ export default class Email extends Connector {
             (attachments.length ? `[+${attachments.length} attachments saved]` : '');
 
           verbose('Constructed emailText:', emailText);
+          this.slog('info', 'Recieved email', {
+            from: parsed.from?.text,
+            subject: parsed.subject,
+            attachmentsNumber: attachments.length,
+          })
 
           // FIXME:
           // const xmppAttachments = await this._convertAttachmentsToXmpp(attachments)
@@ -396,7 +416,6 @@ export default class Email extends Connector {
             });
             log(`📤 Sent email UID ${uid} to XMPP room.`);
           }
-
 
           // ✅ Mark as seen
           await this.mailClient.messageFlagsAdd(uid, ['\\Seen']);
@@ -431,5 +450,6 @@ export default class Email extends Connector {
     if (this.mailClient) await this.mailClient.logout().catch(() => {})
     if (this.xmppAgent) await this.xmppAgent.stop().catch(() => {})
     verbose('EmailBridge stopped')
+    this.slog('debug', 'Bridge stopped')
   }
 }

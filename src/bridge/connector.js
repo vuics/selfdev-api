@@ -1,6 +1,7 @@
 import { log, warn, error, Verbose } from '../services.js'
 import Bridge from '../models/bridge.js'
 import conf from '../conf.js'
+import { sendLog } from '../opensearch.js'
 
 const verbose = Verbose('sd:bridge/connector'); verbose('')
 
@@ -13,13 +14,25 @@ export default class Connector {
     this.pendingResponses = null;
   }
 
+  async slog(level, message, meta = {}) {
+    sendLog(level, message, {
+      ...meta,
+      bridgeId: this.bridge._id.toString(),
+      userId: this.bridge.userId._id.toString(),
+      connector: this.bridge.connector,
+      name: this.bridge.options.name,
+    })
+  }
+
   async start () {
-    verbose('Connector started')
+    this.slog('info', 'Starting bridge')
+    // verbose('Connector started')
     this.pendingResponses = new Map();
   }
 
   async stop () {
-    verbose('Connector stopped')
+    // verbose('Connector stopped')
+    this.slog('info', 'Stopping bridge')
 
     // Clear pending responses
     if (this.pendingResponses) {

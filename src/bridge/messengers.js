@@ -100,54 +100,46 @@ export default class Messengers extends Connector {
     const command = '/bin/matterbridge';
     const args = ['-conf', filename];
 
-    // FIXME:
-    // this.collectLogs = true
-    // this.logs = '';
-
+    this.slog('info', 'Spawning Matterbridge')
     this.matterbridge = spawn(command, args, {
       // stdio: 'inherit'
     });
 
-    // setTimeout(async () => {
-    //   await this.saveLogs()
-    //   this.collectLogs = false
-    // }, 10000)
-
     // Handle errors
     this.matterbridge.on('error', (err) => {
-      error('Failed to start matterbridge:', err);
+      error('Failed to start Matterbridge:', err);
+      this.slog('error', 'Failed to start Matterbridge', {
+        error: err.toString()
+      })
     });
     // Handle exit
     this.matterbridge.on('exit', async (code, signal) => {
       if (code !== null) {
         log(`Matterbridge exited with code ${code}`);
+        this.slog('warn', `Matterbridge exited with code ${code}`, {
+          code, signal,
+        })
       } else {
         log(`Matterbridge was killed by signal ${signal}`);
+        this.slog('warn', `Matterbridge was killed by signal ${signal}`, {
+          code, signal,
+        })
       }
-      // await this.saveLogs()
     });
     // Capture stdout
     this.matterbridge.stdout.on('data', (data) => {
-      // FIXME:
-      // if (this.collectLogs) {
-      //   const text = data.toString();
-      //   this.logs += text;
-      //   console.log('stdout:', text); // optional: still print to console
-      // }
       const text = data.toString();
-      console.log('stdout:', text); // optional: still print to console
+      log('stdout:', text);
+      this.slog('info', text, { channel: 'stdout' })
     });
     // Capture stderr
     this.matterbridge.stderr.on('data', (data) => {
-      // FIXME:
-      // if (this.collectLogs) {
-      //   const text = data.toString();
-      //   this.logs += text;
-      //   console.error('stderr:', text); // optional: still print to console
-      // }
       const text = data.toString();
-      console.error('stderr:', text); // optional: still print to console
+      warn('stderr:', text);
+      this.slog('warn', text, { channel: 'stderr' })
     });
+
+    this.slog('debug', 'Bridge started')
   }
 
   async stop () {
@@ -160,6 +152,7 @@ export default class Messengers extends Connector {
     } else {
       log('Matterbridge is already stopped');
     }
+    this.slog('debug', 'Bridge stopped')
   }
 }
 

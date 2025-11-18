@@ -136,6 +136,8 @@ export default class Phone extends Connector {
 
     this.xmppAgent = new XmppAgent({
       agent: {
+        _id: `bridge:${this.bridge._id.toString()}`,
+        archetype: `bridge:${this.bridge.connector}`,
         options: {
           name: this.bridge.options.name,
           joinRooms: [this.bridge.options.joinRoom],
@@ -314,6 +316,7 @@ export default class Phone extends Connector {
   async deconfigure () {
     verbose('Phone configure')
     try {
+      this.slog('info', 'Configuring the phone...')
       const ssh = new NodeSSH()
       await ssh.connect({
         host: conf.freeswitch.sshHost,
@@ -353,8 +356,12 @@ export default class Phone extends Connector {
       sftp.end();
       ssh.dispose();
       verbose('DONE')
+      this.slog('info', 'Configured the phone')
     } catch (err) {
       error('Error configuring the phone:', err)
+      this.slog('error', 'Error configuring the phone', {
+        error: err.toString()
+      })
       throw err
     }
   }
@@ -371,8 +378,10 @@ export default class Phone extends Connector {
 
       // Create a FreeSWITCH connection
       log(`Connecting to FreeSwitch on ${conf.freeswitch.host}:${conf.freeswitch.port}`);
-      verbose('conf.freeswitch.password:', conf.freeswitch.password)
+      this.slog('info', 'Connecting to FreeSWITCH...')
+      // verbose('conf.freeswitch.password:', conf.freeswitch.password)
       this.conn = new modesl.Connection(conf.freeswitch.host, conf.freeswitch.port, conf.freeswitch.password, async () => {
+        this.slog('info', 'Connected to FreeSWITCH')
         log('Connected to FreeSWITCH');
         this.freeswitchOnline = true;
 
@@ -468,6 +477,7 @@ export default class Phone extends Connector {
         const caller = event.getHeader('Caller-Caller-ID-Number');
         const callee = event.getHeader('Caller-Destination-Number');
         log(`New call detected: ${caller} → ${callee} (UUID: ${uuid})`);
+        this.slog('info', 'New call detected')
 
         if (callee && callee === this.bridge.options.name) {
           log(`Inbound named ${this.bridge.options.name} call detected`);
@@ -482,6 +492,7 @@ export default class Phone extends Connector {
         this.parkUuid = uuid
         const callerNumber = event.getHeader('Caller-ANI');
         log(`Parking call from ${callerNumber} with UUID: ${uuid}`);
+        this.slog('info', 'Parking call')
 
         log('phone:', this.bridge.options.phone)
         log('welcomeMessage:', this.bridge.options.phone.welcomeMessage)
@@ -494,6 +505,7 @@ export default class Phone extends Connector {
       // Add this to your connection event handlers
       this.conn.on('esl::event::CHANNEL_DESTROY::*', (event) => {
         log('Call ended:', event.getHeader('Unique-ID'));
+        this.slog('info', 'Call ended')
         this.parkUuid = null
       });
 
@@ -521,6 +533,7 @@ export default class Phone extends Connector {
         const uuid = event.getHeader('Unique-ID');
         const callerNumber = event.getHeader('Caller-ANI');
         log(`Incoming call from ${callerNumber} with UUID: ${uuid}`);
+        this.slog('info', 'Incoming call')
 
         // Create a new recording session with proper format settings
         const recordingFile = path.join(conf.phone.recordingsDir, `${uuid}.wav`);
@@ -558,6 +571,7 @@ export default class Phone extends Connector {
         const digit = event.getHeader('DTMF-Digit');
         const uuid = event.getHeader('Unique-ID');
         log(`----> DTMF: ${digit}, uuid: ${uuid}`);
+        this.slog('debug', 'DTMF', { digit })
         if (digit === '#') {
           log('User pressed #');
 
@@ -845,6 +859,7 @@ export default class Phone extends Connector {
             log('The SMS is for me, to:', to, `(me=${me})`)
             // log("MESSAGE event:", event)
           }
+          this.slog('debug', 'Received SMS message', { from, to, body })
 
           const sipContentType = extractSIPContentType(body)
           log("sipContentType:", sipContentType)
@@ -912,8 +927,13 @@ export default class Phone extends Connector {
         }
         return ''
       }
+      this.slog('debug', 'Bridge started')
     } catch (err) {
-      error('Error starting Phone:', err)
+      error('Error starting phone:', err)
+      this.slog('error', 'Error starting phone', {
+        error: err.toString()
+      })
+      return
     }
   }
 
@@ -928,5 +948,6 @@ export default class Phone extends Connector {
     this.deconfigure()
 
     verbose('Phone stopped')
+    this.slog('debug', 'Bridge stopped')
   }
 }

@@ -30,6 +30,8 @@ export default class Mcp extends Connector {
     // Initialize XMPP agent for this bridge instance
     this.xmppAgent = new XmppAgent({
       agent: {
+        _id: `bridge:${this.bridge._id.toString()}`,
+        archetype: `bridge:${this.bridge.connector}`,
         options: {
           name: this.bridge.options.name,
           joinRooms: [this.bridge.options.joinRoom],
@@ -128,6 +130,7 @@ export default class Mcp extends Connector {
                   // input contains fields from the client
                   try {
                     verbose('MCP tool invoked, input:', input);
+                    this.slog('debug', 'MCP tool invoked, input:', { input });
                     const requestId = input.requestId || randomUUID();
 
                     // attach requestId so reply can be correlated
@@ -178,9 +181,12 @@ export default class Mcp extends Connector {
                 }
               );
               verbose('Registered MCP tool: send');
+              this.slog('info', 'Registered MCP tool: send');
 
               verbose('Connecting to the MCP server')
+              this.slog('info', 'Connecting to the MCP server...')
               await mcpServer.connect(transport);
+              this.slog('info', 'Connected to the MCP server')
             } else {
               // Invalid request
               res.status(400).json({
@@ -191,6 +197,9 @@ export default class Mcp extends Connector {
                 },
                 id: null
               });
+              this.slog('error', 'Bad Request: No valid session ID provided', {
+                error: err.toString()
+              })
               return;
             }
 
@@ -199,6 +208,9 @@ export default class Mcp extends Connector {
           } catch (err) {
             error('Error handling mcp:', this.bridge.options.name, ', error:', err);
             res.status(500).send({ result: 'error', error: err.toString() });
+            this.slog('error', 'Failed handling MCP', {
+              error: err.toString()
+            })
           }
         }
       });
@@ -210,6 +222,7 @@ export default class Mcp extends Connector {
         verbose('get/delete sessionId:', sessionId)
         if (!sessionId || !transports[sessionId]) {
           res.status(400).send('Invalid or missing session ID');
+          this.slog('error', 'Invalid or missing session ID')
           return;
         }
 
@@ -269,6 +282,7 @@ export default class Mcp extends Connector {
         await this.xmppAgent.stop();
       } catch (e) {}
     }
+    this.slog('debug', 'Bridge started')
   }
 
   async stop() {
@@ -298,5 +312,6 @@ export default class Mcp extends Connector {
     }
 
     verbose('Mcp stopped');
+    this.slog('debug', 'Bridge stopped')
   }
 }

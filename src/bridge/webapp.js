@@ -57,6 +57,8 @@ export default class Webapp extends Connector {
 
     this.xmppAgent = new XmppAgent({
       agent: {
+        _id: `bridge:${this.bridge._id.toString()}`,
+        archetype: `bridge:${this.bridge.connector}`,
         options: {
           name: this.bridge.options.name,
           joinRooms: [this.bridge.options.joinRoom],
@@ -136,57 +138,40 @@ export default class Webapp extends Connector {
         },
       }
       verbose('command:', command, ', args:', args, ', opts:', opts)
+      this.slog('info', 'Spawning Lowdefy')
       this.lowdefy = spawn(command, args, opts);
-
-      // FIXME:
-      // setTimeout(async () => {
-      //   await this.saveLogs()
-      //   this.collectLogs = false
-      // }, 300_000)
 
       // Handle errors
       this.lowdefy.on('error', (err) => {
-        error('Failed to start lowdefy:', err);
+        error('Failed to start Lowdefy:', err);
         this.lowdefyIsFailed = true
+        this.slog('error', 'Failed to start Lowdefy', {
+          error: err.toString()
+        })
       });
       // Handle exit
       this.lowdefy.on('exit', async (code, signal) => {
         if (code !== null) {
           log(`Lowdefy exited with code ${code}`);
+          this.slog('warn', `Lowdefy exited with code ${code}`, {
+            code, signal,
+          })
         } else {
           log(`Lowdefy was killed by signal ${signal}`);
+          this.slog('warn', `Lowdefy was killed by signal ${signal}`, {
+            code, signal,
+          })
         }
         this.lowdefyIsFailed = true
-        // await this.saveLogs()
       });
       // Capture stdout
       this.lowdefy.stdout.on('data', async (data) => {
-        // FIXME:
-        // if (this.collectLogs) {
-        //   const text = data.toString();
-        //   this.logs += text;
-        //   console.log('stdout:', text); // optional: still print to console
-        //   // await this.sendMessage({ prompt: text })
-        // }
+        const text = data.toString();
+        log('stdout:', text);
+        this.slog('info', text, { channel: 'stdout' })
       });
       // Capture stderr
       this.lowdefy.stderr.on('data', async (data) => {
-        // FIXME:
-        // if (this.collectLogs) {
-        //   const text = data.toString();
-        //   if (text.includes('∙  ✓ Ready') ||
-        //       text.includes(`∙   - Local:        http://localhost:${this.port}`)) {
-        //     this.lowdefyIsReady = true
-        //   }
-        //   if (text.includes('Failed to start server') ||
-        //       text.includes('Error: listen EADDRINUSE: address already in use')) {
-        //     this.lowdefyIsFailed = true
-        //   }
-        //   this.logs += text;
-        //   console.error('stderr:', text); // optional: still print to console
-        //   // await this.sendMessage({ prompt: 'stderr: ' + text })
-        // }
-
         const text = data.toString();
         if (text.includes('∙  ✓ Ready') ||
             text.includes(`∙   - Local:        http://localhost:${this.port}`)) {
@@ -197,6 +182,7 @@ export default class Webapp extends Connector {
           this.lowdefyIsFailed = true
         }
         console.error('stderr:', text); // optional: still print to console
+        this.slog('warn', text, { channel: 'stderr' })
       });
 
       async function waitForLowdefy() {
@@ -221,10 +207,12 @@ export default class Webapp extends Connector {
       }
 
       log('Waiting for Lowdefy...')
+      this.slog('info', 'Waiting for Lowdefy...')
       await waitForLowdefy.call(this);
 
 
       log('Starting proxy')
+      this.slog('info', 'Starting proxy...')
       await webServer.start();
 
       this.path = path.join(
@@ -279,12 +267,21 @@ export default class Webapp extends Connector {
           return out
         } catch (err) {
           error('Failed to handle XMPP message:', prompt, err);
+          this.slog('error', 'Failed to handle XMPP message', {
+            prompt,
+            error: err.toString()
+          })
         }
       };
       log('Started')
     } catch (err) {
       error('Error starting Webapp:', err);
+      this.slog('error', 'Error starting Webapp', {
+        error: err.toString()
+      })
+      return
     }
+    this.slog('debug', 'Bridge started')
   }
 
   async sendMessage({ prompt }) {
@@ -324,5 +321,6 @@ export default class Webapp extends Connector {
 
     this.xmppAgent.stop();
     verbose('Webapp stopped');
+    this.slog('debug', 'Bridge stopped')
   }
 }

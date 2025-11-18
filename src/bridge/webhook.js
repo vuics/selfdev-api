@@ -21,6 +21,8 @@ export default class Webhook extends Connector {
 
     this.xmppAgent = new XmppAgent({
       agent: {
+        _id: `bridge:${this.bridge._id.toString()}`,
+        archetype: `bridge:${this.bridge.connector}`,
         options: {
           name: this.bridge.options.name,
           joinRooms: [this.bridge.options.joinRoom],
@@ -46,6 +48,10 @@ export default class Webhook extends Connector {
         this.bridge.options.webhook.endpoint
       );
       verbose('path:', this.path);
+      this.slog('info', `Adding route: ${this.bridge.options.webhook.method} ${this.path}`, {
+        path: this.path,
+        method: this.bridge.options.webhook.method,
+      })
 
       /* -------------------- Webhook → XMPP (Outgoing) -------------------- */
       webServer.addRoute({
@@ -59,6 +65,12 @@ export default class Webhook extends Connector {
               ', query:', req.query,
               ', body:', req.body
             );
+            this.slog('debug', 'Handling webhook', {
+              path: this.path,
+              method: this.bridge.options.webhook.method,
+              query: req.query,
+              body: req.body
+            })
 
             const requestId = randomUUID();
 
@@ -113,6 +125,9 @@ export default class Webhook extends Connector {
           } catch (err) {
             error('Error handling webhook:', this.bridge.options.name, ', error:', err);
             res.status(500).send({ result: 'error', error: err.toString() });
+            this.slog('error', 'Error handling webhook', {
+              error: err.toString()
+            })
           }
         },
       });
@@ -143,12 +158,21 @@ export default class Webhook extends Connector {
           this.resolveXmppResponse({ requestId: msg.requestId, response: prompt });
         } catch (err) {
           error('Failed to handle XMPP message:', prompt, err);
+          this.slog('error', 'Failed to handle XMPP message', {
+            prompt,
+            error: err.toString()
+          })
         }
         return '';
       };
     } catch (err) {
       error('Error starting Webhook:', err);
+      this.slog('error', 'Error starting Webhook', {
+        error: err.toString()
+      })
+      return
     }
+    this.slog('debug', 'Bridge started')
   }
 
   async stop() {
@@ -163,5 +187,6 @@ export default class Webhook extends Connector {
 
     this.xmppAgent.stop();
     verbose('Webhook stopped');
+    this.slog('debug', 'Bridge stopped')
   }
 }

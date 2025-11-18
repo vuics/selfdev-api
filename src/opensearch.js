@@ -23,7 +23,7 @@ try {
 export default opensearch
 
 export async function sendLog(level, message, meta = {}) {
-  verbose('sendLogs level:', level, ', message:', message, ', meta:', meta)
+  // verbose('sendLogs level:', level, ', message:', message, ', meta:', meta)
   const doc = {
     '@timestamp': new Date().toISOString(),
     level,

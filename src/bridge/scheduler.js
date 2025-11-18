@@ -23,6 +23,8 @@ export default class Scheduler extends Connector {
 
     this.xmppAgent = new XmppAgent({
       agent: {
+        _id: `bridge:${this.bridge._id.toString()}`,
+        archetype: `bridge:${this.bridge.connector}`,
         options: {
           name: this.bridge.options.name,
           joinRooms: [this.bridge.options.joinRoom],
@@ -51,6 +53,7 @@ export default class Scheduler extends Connector {
             ', cron:', this.bridge.options.scheduler.cron,
             ', sends message:', this.bridge.options.scheduler.message,
           );
+          this.slog('debug', 'Scheduler started task')
           if (this.bridge.options.enablePersonal) {
             await this.xmppAgent.xmppClient.sendPersonalMessage({
               recipient: this.bridge.options.recipient,
@@ -68,6 +71,9 @@ export default class Scheduler extends Connector {
         } catch (err) {
           error('Error running scheduled task:', this.bridge.options.name,
             ', error:', err)
+          this.slog('error', 'Error running scheduled task', {
+            error: err.toString()
+          })
         }
       }, {
         name: this.bridge.options.name,
@@ -78,7 +84,12 @@ export default class Scheduler extends Connector {
       await this.task.start()
     } catch (err) {
       error('Error starting Scheduler:', err)
+      this.slog('error', 'Error starting Scheduler', {
+        error: err.toString()
+      })
+      return
     }
+    this.slog('debug', 'Bridge started')
   }
 
   async stop () {
@@ -86,5 +97,6 @@ export default class Scheduler extends Connector {
     this.xmppAgent.stop()
     this.task.destroy()
     verbose('Scheduler stopped')
+    this.slog('debug', 'Bridge stopped')
   }
 }
