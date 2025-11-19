@@ -13,6 +13,7 @@ import Agent from './models/agent.js'
 import Map from './models/map.js'
 import App from './models/app.js'
 import Bridge from './models/bridge.js'
+import File from './models/file.js'
 
 import { checkLoginOrBearer } from './middleware/check-auth.js'
 import { Verbose } from './services.js'
@@ -288,6 +289,20 @@ const getResources = (app) => {
 
           req.body.userId = req.user._id;
           req.modelQuery = Bridge.where('userId', req.user._id);
+          next()
+        });
+      }
+    });
+  }
+
+  if (conf.resource.file) {
+    resources.file = resourceJS(app, '/v1', 'file', File).rest({
+      before: (req, res, next) => {
+        checkLoginOrBearer(req, res, async (err) => {
+          if (err) return next(err);
+
+          req.body.userId = req.user._id;
+          req.modelQuery = File.where('userId', req.user._id);
           next()
         });
       }
