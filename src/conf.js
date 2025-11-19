@@ -117,6 +117,7 @@ const conf = {
     app: bool(process.env.RESOURCE_APP || true),
     bridge: bool(process.env.RESOURCE_BRIDGE || true),
     file: bool(process.env.RESOURCE_FILE || true),
+    storage: bool(process.env.RESOURCE_STORAGE || true),
 
     // Swagger Specification
     spec: {
