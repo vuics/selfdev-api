@@ -8,6 +8,8 @@ import { Verbose, log, warn, error } from '../services.js';
 import Map from '../models/map.js'
 import Agent from '../models/agent.js'
 import Bridge from '../models/bridge.js'
+import File from '../models/file.js'
+import Storage from '../models/storage.js'
 import App from '../models/app.js'
 import conf from '../conf.js'
 
@@ -22,9 +24,11 @@ router.get('/', checkAuth, async (req, res, next) => {
     out.agents = await Agent.countDocuments({ userId: req.user._id });
     out.deployedAgents = await Agent.countDocuments({ userId: req.user._id, deployed: true });
     out.maps = await Map.countDocuments({ userId: req.user._id });
-    out.apps = await App.countDocuments({ userId: req.user._id });
     out.bridges = await Bridge.countDocuments({ userId: req.user._id });
     out.deployedBridges = await Bridge.countDocuments({ userId: req.user._id, deployed: true });
+    out.files = await File.countDocuments({ userId: req.user._id });
+    out.storages = await Storage.countDocuments({ userId: req.user._id });
+    out.apps = await App.countDocuments({ userId: req.user._id });
 
     out.agentArchetypes = await Agent.aggregate([
       {
