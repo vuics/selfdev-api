@@ -28,10 +28,10 @@ if (conf.cors.enabled) {
 }
 
 // Raw body for PUT uploads
-app.use("/upload", express.raw({ type: "*/*", limit: "500mb" }));
+app.use("/fs", express.raw({ type: "*/*", limit: "500mb" }));
 
 // ---- PUT UPLOAD HANDLER ----
-app.put("/upload/:slot/:filename", async (req, res) => {
+app.put("/fs/:slot/:filename", async (req, res) => {
   try {
     log('put upload')
     const token = getToken(req);
@@ -70,7 +70,7 @@ app.put("/upload/:slot/:filename", async (req, res) => {
 });
 
 // ---- GET DOWNLOAD HANDLER ----
-app.get("/upload/:slot/:filename", (req, res) => {
+app.get("/fs/:slot/:filename", (req, res) => {
   const filePath = path.join(conf.files.storageDir, req.params.slot, req.params.filename);
 
   if (!fs.existsSync(filePath)) return res.status(404).send("Not found");
