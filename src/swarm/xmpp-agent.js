@@ -10,13 +10,13 @@ import prometheus from '../prometheus.js'
 
 const verbose = Verbose('sd:swarm/xmpp-agent'); verbose('')
 
-const c_messages_received = new prometheus.Counter({
-  name: 'h9y_c_messages_received',
+const h9y_messages_received_total = new prometheus.Counter({
+  name: 'h9y_messages_received_total',
   help: 'Number of messages the agent received from XMPP',
   labelNames: ['channel', 'agentId', 'userId', 'archetype', 'name'],
 });
-const c_messages_sent = new prometheus.Counter({
-  name: 'h9y_c_messages_sent',
+const h9y_messages_sent_total = new prometheus.Counter({
+  name: 'h9y_messages_sent_total',
   help: 'Number of messages the agent sent from XMPP',
   labelNames: ['channel', 'agentId', 'userId', 'archetype', 'name'],
 });
@@ -73,7 +73,7 @@ export default class XmppAgent {
     })
     if (this.handleChat) {
       this.xmppClient.emitter.on('chatMessage', async ({ from, body }) => {
-        c_messages_received.inc({ channel: 'chat', ...this.metadata }, 1);
+        h9y_messages_received_total.inc({ channel: 'chat', ...this.metadata }, 1);
         verbose('Received a chat message from:', from, ', body:', body)
 
         const replyFunc = async ({ content }) => {
@@ -81,7 +81,7 @@ export default class XmppAgent {
           this.slog('debug', `Sends personal message`, {
             recipient: from, content
           })
-          c_messages_sent.inc({ channel: 'chat', ...this.metadata }, 1);
+          h9y_messages_sent_total.inc({ channel: 'chat', ...this.metadata }, 1);
           return this.xmppClient.sendPersonalMessage({ recipient: from, prompt: content })
         }
 
@@ -96,7 +96,7 @@ export default class XmppAgent {
     if (this.handleRooms) {
       this.xmppClient.emitter.on('groupMessage', async ({ from, body, mentioned }) => {
         verbose('Received a group message from:', from, ', body:', body)
-        c_messages_received.inc({ channel: 'group', ...this.metadata }, 1);
+        h9y_messages_received_total.inc({ channel: 'group', ...this.metadata }, 1);
 
         if (!mentioned) { return }
 
@@ -108,7 +108,7 @@ export default class XmppAgent {
           this.slog('debug', `Sends group message`, {
             recipient: from, content, room: roomJid,
           })
-          c_messages_sent.inc({ channel: 'group', ...this.metadata }, 1);
+          h9y_messages_sent_total.inc({ channel: 'group', ...this.metadata }, 1);
           return this.xmppClient.sendRoomMessage({
             recipient: from,
             prompt: content,
