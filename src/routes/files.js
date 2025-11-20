@@ -62,8 +62,21 @@ router.put("/:slot/:filename", async (req, res) => {
 
 
     try {
-      const xmppUser = payload.sub.split('@')[0]
-      // verbose('xmppUser:', xmppUser)
+      let xmppUser
+      let jidPart = payload.sub.replace(conf.xmpp.host, '')
+      const lastSymbol = jidPart.slice(-1)
+      // NOTE: username can be one of 2 formats:
+      //       1. `username@${conf.xmpp.host}`
+      //       2. `agentname@username.${conf.xmpp.host}`
+      if (lastSymbol === '@') {
+        xmppUser = jidPart.split('@')[0]
+      } else if (lastSymbol === '.') {
+        jidPart = jidPart.slice(0, -1)
+        xmppUser = jidPart.split('@')[1]
+      } else {
+        xmppUser = payload.sub.split('@')[0]
+      }
+      verbose('xmppUser:', xmppUser)
       const user = await User.findOne({ "xmpp.user": xmppUser })
       // verbose('By sub:', payload.sub, 'found user:', user)
 

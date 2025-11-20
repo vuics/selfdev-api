@@ -215,7 +215,10 @@ export default mongoose.model(
           list: String,
           get: String,
           set: String,
+          append: String,
           delete: String,
+          load: String,
+          save: String,
         },
       },
 
