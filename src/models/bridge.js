@@ -29,7 +29,13 @@ const ProtocolSchema = new mongoose.Schema({
   name: { type: String, required: true },
 
   // Generic fields for all protocols — flexible to handle various types
-  Token: String,
+  Token: {
+    valueFromVault: String,
+  },
+  Login: String,
+  Password: {
+    valueFromVault: String,
+  },
   Server: String,
   AutoWebhooks: { type: Boolean, default: undefined },
   RemoteNickFormat: String,
@@ -38,15 +44,15 @@ const ProtocolSchema = new mongoose.Schema({
   QuoteFormat: String,
   QuoteLengthLimit: String,
   IgnoreMessages: String,
-  Login: String,
-  Password: String,
   NoHomeServerSuffix: { type: Boolean, default: undefined },
   Team: String,
   NoTLS: { type: Boolean, default: undefined },
   PrefixMessagesWithNick: { type: Boolean, default: undefined },
   Nick: String,
   NickServNick: String,
-  NickServPassword: String,
+  NickServPassword: {
+    valueFromVault: String,
+  },
   UseTLS: { type: Boolean, default: undefined },
   UseSASL: { type: Boolean, default: undefined },
   SkipTLSVerify: { type: Boolean, default: undefined },
@@ -57,7 +63,9 @@ const ProtocolSchema = new mongoose.Schema({
   Muc: String,
   TenantID: String,
   ClientID: String,
-  TeamID: String,
+  TeamID: {
+    valueFromVault: String,
+  },
   TLSClientCertificate: String,
   TLSClientKey: String,
   TLSCACertificate: String,
