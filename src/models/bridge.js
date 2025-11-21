@@ -125,14 +125,18 @@ const EmailSchema = new mongoose.Schema({
     host: String,
     port: Number,
     user: String,
-    pass: String,
+    password: {
+      valueFromVault: String,
+    },
     secure: Boolean,
   },
   smtp: {
     host: String,
     port: Number,
     user: String,
-    pass: String,
+    password: {
+      valueFromVault: String,
+    },
     secure: Boolean,
   },
   pollSec: Number,

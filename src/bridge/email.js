@@ -232,10 +232,10 @@ export default class Email extends Connector {
       secure: opts.imap.secure !== false,
       auth: {
         user: opts.imap.user,
-        pass: opts.imap.pass,
+        pass: opts.imap.password,
       },
     }
-    verbose(imapOptions)
+    verbose('imapOptions:', imapOptions)
     this.mailClient = new ImapFlow(imapOptions)
     // verbose('mailClient:', this.mailClient)
     // log('mailClient connected (before):', this.mailClient.connected) // boolean
@@ -262,13 +262,23 @@ export default class Email extends Connector {
 
 
     /* ---------- SMTP TRANSPORT ---------- */
+    const smtpOptions = {
+      host: opts.smtp.host,
+      port: opts.smtp.port || 465,
+      secure: opts.smtp.secure !== false,
+      auth: {
+        user: opts.smtp.user,
+        pass: opts.smtp.password,
+      },
+    }
+    verbose('smtpOptions:', smtpOptions)
     this.smtpTransporter = nodemailer.createTransport({
       host: opts.smtp.host,
       port: opts.smtp.port || 465,
       secure: opts.smtp.secure !== false,
       auth: {
         user: opts.smtp.user,
-        pass: opts.smtp.pass,
+        pass: opts.smtp.password,
       },
     })
     verbose('smtpTransporter:', this.smtpTransporter)
