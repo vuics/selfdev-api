@@ -92,12 +92,16 @@ const MessengersSchema = new mongoose.Schema({
 const PhoneSchema = new mongoose.Schema({
   host: String,
   username: String,
-  password: String,
+  password: {
+    valueFromVault: String,
+  },
   realm: String,
 
   directoryHost: String,
   directoryNumber: String,
-  directoryPassword: String,
+  directoryPassword: {
+    valueFromVault: String,
+  },
 
   welcomeMessage: String,
 }, { _id: false })
