@@ -189,7 +189,7 @@ router.delete('/client/:bridgeId', checkAuth, async (req, res, next) => {
     try {
       const jid = `${bridge.options.client.user}@${req.user.xmpp.user}.${conf.xmpp.host}`
       verbose('Unregister an client bridge from XMPP, jid:', jid)
-      const response = await axios.get(`${conf.xmpp.commanderUrl}/delete-agent`, {
+      const response = await axios.get(`${conf.xmpp.commanderUrl}/unregister-agent`, {
         params: {
           jid,
         },
