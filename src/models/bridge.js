@@ -163,8 +163,7 @@ const ClientSchema = new mongoose.Schema({
 const A2aSchema = new mongoose.Schema({
   endpoint: String,
   timeoutSec: Number,
-  setRequestId: Boolean,
-  requestIdKey: String,
+  textOnly: Boolean,
 }, { _id: false })
 
 const BridgeSchema = new mongoose.Schema({

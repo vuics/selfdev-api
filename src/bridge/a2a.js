@@ -32,32 +32,27 @@ class AgentExecutor {
         requestContext,
       })
 
-      const text = null
       const requestId = requestContext?.userMessage?.messageId || randomUUID();
-      const payload = {
-        ...requestContext?.userMessage,
-      };
-      if (this.a2a.bridge.options.a2a.setRequestId) {
-        payload[this.a2a.bridge.options.a2a.requestIdKey] = requestId
-      } else {
+      let text = null
+      verbose('textOnly:', this.a2a.bridge.options.a2a.textOnly)
+      if (this.a2a.bridge.options.a2a.textOnly) {
         text = requestContext?.userMessage?.parts[0]?.text || ''
       }
       verbose('text:', text)
       verbose('requestId:', requestId)
-      verbose('payload:', payload)
 
       // Send to XMPP
       if (this.a2a.bridge.options.enablePersonal) {
         await this.a2a.xmppAgent.xmppClient.sendPersonalMessage({
           recipient: this.a2a.bridge.options.recipient,
-          prompt: text || JSON.stringify(payload),
+          prompt: text || JSON.stringify(requestContext),
         });
       }
       if (this.a2a.bridge.options.enableRoom && this.a2a.bridge.options.joinRooms?.length > 0) {
         await this.a2a.xmppAgent.xmppClient.sendRoomMessage({
           room: this.a2a.bridge.options.joinRooms[0],
           recipient: this.a2a.bridge.options.recipientNickname,
-          prompt: text || JSON.stringify(payload),
+          prompt: text || JSON.stringify(requestContext),
           mucHost: conf.xmpp.mucHost,
         });
       }
@@ -68,13 +63,32 @@ class AgentExecutor {
         timeoutSec: this.a2a.bridge.options.a2a?.timeoutSec,
       });
 
-      const message = {
-        kind: 'message',
-        messageId: uuidv4(),
-        role: 'agent',
-        parts: [{ kind: 'text', text: response }],
-        contextId: requestContext.contextId,
-      };
+      let message = null
+      if (this.a2a.bridge.options.a2a.textOnly) {
+        message = {
+          kind: 'message',
+          messageId: uuidv4(),
+          role: 'agent',
+          parts: [{ kind: 'text', text: response }],
+          contextId: requestContext.contextId,
+        };
+      } else {
+        try {
+          message = JSON.parse(response)
+        } catch (err) {
+          error('Cannot parse response:', err)
+          this.slog('error', 'Cannot parse response', {
+            error: err.toString()
+          })
+          message = {
+            kind: 'message',
+            messageId: uuidv4(),
+            role: 'agent',
+            parts: [{ kind: 'text', text: `Cannot parse response: ${err.toString()}`}],
+            contextId: requestContext.contextId,
+          };
+        }
+      }
 
       eventBus.publish(message);
       eventBus.finished();
