@@ -36,7 +36,11 @@ class AgentExecutor {
       let text = null
       verbose('textOnly:', this.a2a.bridge.options.a2a.textOnly)
       if (this.a2a.bridge.options.a2a.textOnly) {
-        text = requestContext?.userMessage?.parts[0]?.text || ''
+        // Join all text parts into a single string
+        text = (requestContext?.userMessage?.parts || [])
+          .filter(p => p.kind === 'text' && typeof p.text === 'string')
+          .map(p => p.text)
+          .join(' ');
       }
       verbose('text:', text)
       verbose('requestId:', requestId)
