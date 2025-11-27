@@ -10,9 +10,12 @@ import webServer from './web-server.js'
 const verbose = Verbose('sd:bridge/webhook'); verbose('')
 
 // Example webhook call with curl:
+//
 //   curl -X POST http://localhost:6370/wh/679b3c9a6e26f022ca69515b/webhook/post \
 //     -H "Content-Type: application/json" \
 //     -d '{"key":"value", "key2": "value222" }'
+//
+//   curl https://bridge.hyag.ru/wh/68de484c10c5628a6a7c894e/webhook/get\?key\=value\&hey1\=value1
 
 export default class Webhook extends Connector {
   constructor(args) {
