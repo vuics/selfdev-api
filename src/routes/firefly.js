@@ -130,7 +130,7 @@ router.get('/account', checkAuth, async (req, res, next) => {
         if (!req.user.firefly) {
           req.user.firefly = {};
         }
-        req.user.firefly.address = parsedResponse?.commandOutput
+        req.user.firefly.address = parsedResponse?.commandOutput?.address
         verbose('address:', req.user.firefly.address)
         await req.user.save();
         // verbose('Saved new XMPP credentials to user document:', req.user);
