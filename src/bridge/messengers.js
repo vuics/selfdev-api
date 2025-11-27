@@ -105,7 +105,7 @@ export default class Messengers extends Connector {
         xmpp: {
           Name: this.bridge.options.name,
 
-          Server: conf.xmpp.host,
+          Server: conf.xmpp.connectHost,
           Jid: `${this.bridge.options.name}@${this.xmppAgent.credentials.host}`,
           Password: this.xmppAgent.credentials.password,
 

@@ -403,6 +403,8 @@ const conf = {
 
   xmpp: {
     host: process.env.XMPP_HOST || 'selfdev-prosody.dev.local',
+    connectHost: process.env.XMPP_CONNECT_HOST || 'selfdev-prosody.dev.local',
+
     websocketUrl: process.env.XMPP_WEBSOCKET_URL || 'wss://selfdev-prosody.dev.local:5281/xmpp-websocket',
     commanderUrl: process.env.XMPP_COMMANDER_URL || 'http://selfdev-prosody.dev.local:8387',
 
