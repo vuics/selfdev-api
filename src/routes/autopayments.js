@@ -258,7 +258,7 @@ app.delete('/cancel', checkAuth, checkYookassa, async (req, res) => {
 });
 
 // Set webhook to :
-//   https://api.hyag.org/v1/subscriptions/webhook
+//   https://api.h9y.ai/v1/subscriptions/webhook
 //
 // export async function subscriptionsWebhook (req, res) {
 //   // Retrieve the event by verifying the signature using the raw body and secret.

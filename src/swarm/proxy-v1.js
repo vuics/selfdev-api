@@ -38,7 +38,7 @@ export default class ProxyV1 extends XmppAgent {
       // ```json
       // {
       //   "action": "forward",
-      //   "recipient": "recipient@x.hyag.org",
+      //   "recipient": "recipient@x.h9y.ai",
       //   "message": "Hello, World!",
       //   "controlKey": "Please, do it! :-)"
       // }

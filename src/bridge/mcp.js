@@ -95,7 +95,7 @@ export default class Mcp extends Connector {
 
                 enableDnsRebindingProtection: true,
                 // allowedHosts: ['127.0.0.1', 'dev.local', 'selfdev-swarm.dev.local', 'selfdev-bridge.dev.local', 'selfdev-bridge.dev.local:6370'],
-                // allowedOrigins: ['http://localhost:6274', 'https://selfdev-swarm.dev.local', 'https://dev.local', 'https://hyag.ru', 'https://hyag.org'],
+                // allowedOrigins: ['http://localhost:6274', 'https://selfdev-swarm.dev.local', 'https://dev.local', 'https://h9y.ai'],
               });
 
               // Clean up transport when closed

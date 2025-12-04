@@ -82,7 +82,7 @@ const MarkerEndSchema = new mongoose.Schema({
 }, { _id: false, strict: false })
 
 const RequestEdgeDataSchema = new mongoose.Schema({
-  recipient: String,   // The agent name, xmpp address of the agent, e.g. agentname@username.x.hyag.ru
+  recipient: String,   // The agent name, xmpp address of the agent, e.g. agentname@username.x.h9y.ai
   condition: String,   // Regular expresson, the edge gets executed (message send to recipient if the condition is satisfied when applied to the source edge before sending the message to the recipient
   evaluateOn: String,  // Uname of a note node that is used to build smart text to evaluate the condition. By default, the edge source node is used to evaluate the condition.
   satisfied: Boolean,  // If condition is satisfied by applying the condition regex to the source node smart text

@@ -131,15 +131,15 @@ const conf = {
     "version": "1.0.0",
     "contact": {
       "name": "API Support",
-      "url": "https://hyag.org/",
+      "url": "https://h9y.ai/",
       "email": "admin@vuics.com"
     }
   },
-  "host": "api.hyag.org",
+  "host": "api.h9y.ai",
   "basePath": "",
   "schemes": ["https"],
   "servers": [ {
-    "url": "https://api.hyag.org",
+    "url": "https://api.h9y.ai",
     "description": "HyperAgency Cloud"
   }, {
     "url": "https://selfdev-api.dev.local:6369",
@@ -418,7 +418,7 @@ const conf = {
 
   firefly: {
     enable: bool(process.env.FIREFLY_ENABLE || true),
-    host: process.env.FIREFLY_HOST || 'https://firefly1.hyag.ru',
+    host: process.env.FIREFLY_HOST || 'https://firefly1.h9y.ai',
     namespace: process.env.FIREFLY_NAMESPACE || 'default',
     commanderUrl: process.env.FIREFLY_COMMANDER_URL || 'http://aaa-wn.local:8387',
 
@@ -492,7 +492,7 @@ const conf = {
   },
 
   apps: {
-    registryUrl: process.env.APPS_REGISTRY_URL || 'https://verdaccio.hyag.ru',
+    registryUrl: process.env.APPS_REGISTRY_URL || 'https://verdaccio.h9y.ai',
   },
 
   freeswitch: {

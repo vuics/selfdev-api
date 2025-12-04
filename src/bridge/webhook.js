@@ -15,7 +15,7 @@ const verbose = Verbose('sd:bridge/webhook'); verbose('')
 //     -H "Content-Type: application/json" \
 //     -d '{"key":"value", "key2": "value222" }'
 //
-//   curl https://bridge.hyag.ru/wh/68de484c10c5628a6a7c894e/webhook/get\?key\=value\&hey1\=value1
+//   curl https://bridge.h9y.ai/wh/68de484c10c5628a6a7c894e/webhook/get\?key\=value\&hey1\=value1
 
 export default class Webhook extends Connector {
   constructor(args) {
