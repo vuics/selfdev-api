@@ -534,6 +534,10 @@ const conf = {
   webServer: {
     port: num(process.env.WEB_SERVER_PORT || 6370),
     origin: process.env.WEB_SERVER_ORIGIN || 'http://selfdev-bridge.dev.local:6370',
+
+    secure: bool(process.env.WEB_SERVER_SECURE || false),
+    keyFile: process.env.WEB_SERVER_KEY_FILE || '/opt/ssl/tls.key',
+    certFile: process.env.WEB_SERVER_CERT_FILE || '/opt/ssl/tls.crt',
   },
 
   webapp: {

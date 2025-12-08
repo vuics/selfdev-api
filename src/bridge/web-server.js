@@ -3,6 +3,8 @@ import morgan from 'morgan'
 import compression from 'compression'
 import cookieParser from 'cookie-parser'
 import http from 'http'
+import https from 'https'
+import { readFileSync } from 'fs'
 import cors from 'cors';
 import { createProxyMiddleware } from "http-proxy-middleware";
 
@@ -74,10 +76,17 @@ class WebServer {
 
       this.app.get('/about', (req, res) => res.send('Selfdev Webhook Server'));
 
-      this.server = http.createServer(this.app);
+      if (conf.webServer.secure) {
+        this.server = https.createServer({
+          key: readFileSync(conf.webServer.keyFile),
+          cert: readFileSync(conf.webServer.certFile)
+        }, this.app);
+      } else {
+        this.server = http.createServer(this.app);
+      }
       this.server.listen(conf.webServer.port, () => {
         log('Bridge WebServer is listening on port', conf.webServer.port);
-        verbose(`  http://localhost:${conf.webServer.port}`);
+        verbose(`  http${conf.webServer.secure && 's'}://localhost:${conf.webServer.port}`);
         verbose(`  ${conf.webServer.origin}`);
       });
     }
