@@ -514,7 +514,7 @@ const conf = {
   },
 
   speech: {
-    url: process.env.SPEACHES_BASE_URL || 'http://selfdev-speech.dev.local:8372',
+    url: process.env.SPEACHES_BASE_URL || 'http://selfdev-speech.dev.local:8372/v1',
     sttModel: process.env.TRANSCRIPTION_MODEL_ID || 'Systran/faster-distil-whisper-small.en',
     ttsModel: process.env.SPEECH_MODEL_ID || 'speaches-ai/Kokoro-82M-v1.0-ONNX',
     ttsVoice: process.env.VOICE_ID || 'af_heart',

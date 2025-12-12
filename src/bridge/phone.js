@@ -612,7 +612,7 @@ export default class Phone extends Connector {
           log('text:', text)
           // Generate TTS with Speaches.ai
           const response = await axios.post(
-            `${conf.speech.url}/v1/audio/speech`,
+            `${conf.speech.url}/audio/speech`,
             {
               input: text,
               model: conf.speech.ttsModel,
@@ -779,7 +779,7 @@ export default class Phone extends Connector {
 
         try {
           const response = await axios.post(
-            `${conf.speech.url}/v1/audio/transcriptions`,
+            `${conf.speech.url}/audio/transcriptions`,
             formData,
             {
               headers: formData.getHeaders(),
