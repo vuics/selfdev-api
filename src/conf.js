@@ -221,15 +221,28 @@ const conf = {
       limits: {
         apiAccess: false,
         maps: 3,
-        deployedAgents: 0,
-        archetypes: [ ],
-        chatProviders: [ ],
+        deployedAgents: 1,
+        archetypes: ['chat-v1.0'],
+        agentExpires: ['1m', '1h'],
+
+        chatProviders: ['openai', 'ollama'],
         ragProviders: [ ],
         ragEmbeddingsProviders: [ ],
         sttProviders: [],
         ttsProviders: [],
         imagegenProviders: [],
         avatarProviders: [],
+
+        deployedBridges: 1,
+        connectors: ['scheduler', 'webhook'],
+        bridgeExpires: ['1m', '1h'],
+
+        // TODO: add files limits
+        //
+        // files: 0,
+        // filesSize: '0',
+        // storages: 0,
+
         audioRecordings: false,
         fileAttachments: false,
         synthetic: false,
@@ -272,13 +285,25 @@ const conf = {
         maps: 30,
         deployedAgents: 3,
         archetypes: [ 'chat-v1.0', 'rag-v1.0', 'storage-v1.0', ],
-        chatProviders: [ 'openai' ],
-        ragProviders: [ 'openai' ],
-        ragEmbeddingsProviders: [ 'openai' ],
+        agentExpires: ['1m', '1h', '12h', '1d', '1w'],
+        chatProviders: [ 'openai', 'ollama' ],
+        ragProviders: [ 'openai', 'ollama' ],
+        ragEmbeddingsProviders: [ 'openai', 'ollama' ],
         sttProviders: [],
         ttsProviders: [],
         imagegenProviders: [],
         avatarProviders: [],
+
+        deployedBridges: 2,
+        connectors: ['scheduler', 'webhook', ],
+        bridgeExpires: ['1h', '12h', '1d', '1w'],
+
+        // TODO: add files limits
+        //
+        // files: 0,
+        // filesSize: '100Mi',
+        // storages: 0,
+
         audioRecordings: false,
         fileAttachments: false,
         synthetic: false,
@@ -324,13 +349,25 @@ const conf = {
           'chat-v1.0', 'rag-v1.0', 'storage-v1.0',
           'stt-v1.0', 'tts-v1.0', 'imagegen-v1.0',
         ],
-        chatProviders: [ 'openai', 'google_genai' ],
-        ragProviders: [ 'openai', 'google_genai' ],
-        ragEmbeddingsProviders: [ 'openai', 'google_genai' ],
+        agentExpires: [],  // '1m', '1h', '12h', '1d', '1w', '1mo', ''
+        chatProviders: [ 'openai', 'google_genai', 'ollama' ],
+        ragProviders: [ 'openai', 'google_genai', 'ollama' ],
+        ragEmbeddingsProviders: [ 'openai', 'google_genai', 'ollama' ],
         sttProviders: [ 'speaches' ],
         ttsProviders: [ 'speaches' ],
         imagegenProviders: [ 'openai' ],
         avatarProviders: [ ],
+
+        deployedBridges: 3,
+        connectors: [],  // 'messengers', 'phone', 'scheduler', 'webhook', 'email', 'mcp', 'webapp', 'a2a', 'client'
+        bridgeExpires: [],  // '1m', '1h', '12h', '1d', '1w', '1mo', ''
+
+        // TODO: add files limits
+        //
+        // files: 50,
+        // filesSize: '300Mi',
+        // storages: 0,
+
         audioRecordings: true,
         fileAttachments: true,
         synthetic: false,

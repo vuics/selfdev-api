@@ -75,6 +75,7 @@ const schema = mongoose.Schema({
     maps: Number,
     deployedAgents: Number,
     archetypes: [String],
+    agentExpires: [String],
     //
     chatProviders: [String],
     ragProviders: [String],
@@ -83,6 +84,15 @@ const schema = mongoose.Schema({
     ttsProviders: [String],
     imagegenProviders: [String],
     avatarProviders: [String],
+
+    deployedBridges: Number,
+    connectors: [String],  // 'messengers', 'phone', 'scheduler', 'webhook', 'email', 'mcp', 'webapp', 'a2a', 'client'
+    bridgeExpires: [String],  // '1m', '1h', '12h', '1d', '1w', '1mo', ''
+
+    // TODO: add
+    // files: Number,
+    // filesSize: String,
+    // storages: Number,
 
     // front-end limits
     audioRecordings: Boolean,

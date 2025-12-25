@@ -137,88 +137,97 @@ const getResources = (app) => {
                 }
               }
 
-              if (has(req.user, 'limits.deployedAgents') &&
-                  req.user?.limits?.deployedAgents != null &&
-                  deployedCount >= req.user.limits.deployedAgents) {
-                return res.status(403).json({
-                  result: 'error',
-                  message: 'Deployed agents limit reached'
-                });
-              }
-
-              if (has(req.user, 'limits.archetypes') &&
-                  req.user?.limits?.archetypes != null &&
-                  !req.user?.limits?.archetypes.includes(req.body.archetype)) {
-                return res.status(403).json({
-                  result: 'error',
-                  message: `You are not allowed to deploy agents of the archetype: ${req.body.archetype}`,
-                });
-              }
-
-              verbose('req.user.limits:', req.user.limits)
-              verbose('req.body.options:', req.body.options)
-              if (has(req.user, 'limits.chatProviders') &&
-                  req.user?.limits?.chatProviders != null &&
-                  req.body.options?.chat?.model?.provider != null &&
-                  !req.user?.limits?.chatProviders.includes(req.body.options.chat.model.provider)) {
-                return res.status(403).json({
-                  result: 'error',
-                  message: `You are not allowed to deploy chat agents with model provider: ${req.body.options.chat.model.provider}`,
-                });
-              }
-              if (has(req.user, 'limits.ragProviders') &&
-                  req.user?.limits?.ragProviders != null &&
-                  req.body.options?.rag?.model?.provider != null &&
-                  !req.user?.limits?.ragProviders.includes(req.body.options.rag.model.provider)) {
-                return res.status(403).json({
-                  result: 'error',
-                  message: `You are not allowed to deploy rag agents with model provider: ${req.body.options.rag.model.provider}`,
-                });
-              }
-              if (has(req.user, 'limits.ragEmbeddingsProviders') &&
-                  req.user?.limits?.ragEmbeddingsProviders != null &&
-                  req.body.options?.rag?.embeddings?.provider != null &&
-                  !req.user?.limits?.ragEmbeddingsProviders.includes(req.body.options.rag.embeddings.provider)) {
-                return res.status(403).json({
-                  result: 'error',
-                  message: `You are not allowed to deploy rag agents with embeddings provider: ${req.body.options.rag.embeddings.provider}`,
-                });
-              }
-              if (has(req.user, 'limits.sttProviders') &&
-                  req.user?.limits?.sttProviders != null &&
-                  req.body.options?.stt?.model?.provider != null &&
-                  !req.user?.limits?.sttProviders.includes(req.body.options.stt.model.provider)) {
-                return res.status(403).json({
-                  result: 'error',
-                  message: `You are not allowed to deploy stt agents with model provider: ${req.body.options.stt.model.provider}`,
-                });
-              }
-              if (has(req.user, 'limits.ttsProviders') &&
-                  req.user?.limits?.ttsProviders != null &&
-                  req.body.options?.tts?.model?.provider != null &&
-                  !req.user?.limits?.ttsProviders.includes(req.body.options.tts.model.provider)) {
-                return res.status(403).json({
-                  result: 'error',
-                  message: `You are not allowed to deploy tts agents with model provider: ${req.body.options.tts.model.provider}`,
-                });
-              }
-              if (has(req.user, 'limits.imagegenProviders') &&
-                  req.user?.limits?.imagegenProviders != null &&
-                  req.body.options?.imagegen?.model?.provider != null &&
-                  !req.user?.limits?.imagegenProviders.includes(req.body.options.imagegen.model.provider)) {
-                return res.status(403).json({
-                  result: 'error',
-                  message: `You are not allowed to deploy imagegen agents with model provider: ${req.body.options.imagegen.model.provider}`,
-                });
-              }
-              if (has(req.user, 'limits.avatarProviders') &&
-                  req.user?.limits?.avatarProviders != null &&
-                  req.body.options?.avatar?.model?.provider != null &&
-                  !req.user?.limits?.avatarProviders.includes(req.body.options.avatar.model.provider)) {
-                return res.status(403).json({
-                  result: 'error',
-                  message: `You are not allowed to deploy avatar agents with model provider: ${req.body.options.avatar.model.provider}`,
-                });
+              if (req.user?.limits) {
+                verbose('req.user.limits:', req.user.limits)
+                verbose('req.body.options:', req.body.options)
+                if (has(req.user?.limits, 'deployedAgents') &&
+                    req.user?.limits?.deployedAgents != null &&
+                    deployedCount >= req.user.limits.deployedAgents) {
+                  return res.status(403).json({
+                    result: 'error',
+                    message: 'Deployed agents limit reached'
+                  });
+                }
+                if (has(req.user?.limits, 'archetypes') &&
+                    req.user?.limits?.archetypes != null &&
+                    !req.user?.limits?.archetypes.includes(req.body.archetype)) {
+                  return res.status(403).json({
+                    result: 'error',
+                    message: `You are not allowed to deploy agents of the archetype: ${req.body.archetype}`,
+                  });
+                }
+                if (has(req.user?.limits, 'agentExpires') &&
+                    req.user?.limits?.agentExpires != null &&
+                    req.body.options?.expire != null &&
+                    !req.user?.limits?.agentExpires.includes(req.body.options.expire)) {
+                  return res.status(403).json({
+                    result: 'error',
+                    message: `You are not allowed to deploy agents with expire: ${req.body.options.expire}`,
+                  });
+                }
+                if (has(req.user?.limits, 'chatProviders') &&
+                    req.user?.limits?.chatProviders != null &&
+                    req.body.options?.chat?.model?.provider != null &&
+                    !req.user?.limits?.chatProviders.includes(req.body.options.chat.model.provider)) {
+                  return res.status(403).json({
+                    result: 'error',
+                    message: `You are not allowed to deploy chat agents with model provider: ${req.body.options.chat.model.provider}`,
+                  });
+                }
+                if (has(req.user?.limits, 'ragProviders') &&
+                    req.user?.limits?.ragProviders != null &&
+                    req.body.options?.rag?.model?.provider != null &&
+                    !req.user?.limits?.ragProviders.includes(req.body.options.rag.model.provider)) {
+                  return res.status(403).json({
+                    result: 'error',
+                    message: `You are not allowed to deploy rag agents with model provider: ${req.body.options.rag.model.provider}`,
+                  });
+                }
+                if (has(req.user?.limits, 'ragEmbeddingsProviders') &&
+                    req.user?.limits?.ragEmbeddingsProviders != null &&
+                    req.body.options?.rag?.embeddings?.provider != null &&
+                    !req.user?.limits?.ragEmbeddingsProviders.includes(req.body.options.rag.embeddings.provider)) {
+                  return res.status(403).json({
+                    result: 'error',
+                    message: `You are not allowed to deploy rag agents with embeddings provider: ${req.body.options.rag.embeddings.provider}`,
+                  });
+                }
+                if (has(req.user?.limits, 'sttProviders') &&
+                    req.user?.limits?.sttProviders != null &&
+                    req.body.options?.stt?.model?.provider != null &&
+                    !req.user?.limits?.sttProviders.includes(req.body.options.stt.model.provider)) {
+                  return res.status(403).json({
+                    result: 'error',
+                    message: `You are not allowed to deploy stt agents with model provider: ${req.body.options.stt.model.provider}`,
+                  });
+                }
+                if (has(req.user?.limits, 'ttsProviders') &&
+                    req.user?.limits?.ttsProviders != null &&
+                    req.body.options?.tts?.model?.provider != null &&
+                    !req.user?.limits?.ttsProviders.includes(req.body.options.tts.model.provider)) {
+                  return res.status(403).json({
+                    result: 'error',
+                    message: `You are not allowed to deploy tts agents with model provider: ${req.body.options.tts.model.provider}`,
+                  });
+                }
+                if (has(req.user?.limits, 'imagegenProviders') &&
+                    req.user?.limits?.imagegenProviders != null &&
+                    req.body.options?.imagegen?.model?.provider != null &&
+                    !req.user?.limits?.imagegenProviders.includes(req.body.options.imagegen.model.provider)) {
+                  return res.status(403).json({
+                    result: 'error',
+                    message: `You are not allowed to deploy imagegen agents with model provider: ${req.body.options.imagegen.model.provider}`,
+                  });
+                }
+                if (has(req.user?.limits, 'avatarProviders') &&
+                    req.user?.limits?.avatarProviders != null &&
+                    req.body.options?.avatar?.model?.provider != null &&
+                    !req.user?.limits?.avatarProviders.includes(req.body.options.avatar.model.provider)) {
+                  return res.status(403).json({
+                    result: 'error',
+                    message: `You are not allowed to deploy avatar agents with model provider: ${req.body.options.avatar.model.provider}`,
+                  });
+                }
               }
             }
 
@@ -291,6 +300,69 @@ const getResources = (app) => {
 
           req.body.userId = req.user._id;
           req.modelQuery = Bridge.where('userId', req.user._id);
+
+          try {
+            // Check if user is creating or updating with deployed:true
+            // verbose('req.params:', req.params)
+            // verbose('req.query:', req.query)
+            // verbose('req.body:', req.body)
+            // verbose('req.body[0]:', req.body[0])
+            const wantsToDeploy = (req.body.deployed === true) ||   // POST, PUT
+              (req.body[0] && req.body[0].op === 'replace' && req.body[0].path === '/deployed' && req.body[0].value === true)  // PATCH
+            // verbose('wantsToDeploy:', wantsToDeploy)
+            if (wantsToDeploy) {
+              // Count already deployed bridges of this user
+              const deployedCount = await Bridge.countDocuments({ userId: req.user._id, deployed: true });
+              // verbose('deployedCount:', deployedCount)
+              // If this is an update, exclude this bridge from the count
+              if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
+                const bridgeId = req.params.id || req.params.bridgeId;
+                verbose('bridgeId:', bridgeId)
+                const currentBridge = await Bridge.findById(bridgeId);
+                if (currentBridge && currentBridge.deployed === true) {
+                  // The bridge is already deployed, so no need to increase count
+                  // So deployedCount includes this one, no need to check limit
+                  verbose('next()')
+                  return next();
+                }
+
+                // verbose('req.user.limits:', req.user.limits)
+                // verbose('req.body.options:', req.body.options)
+                // verbose('currentBridge:', currentBridge)
+                if (req.user?.limits) {
+                  if (has(req.user?.limits, 'deployedBridges') &&
+                      req.user?.limits?.deployedBridges != null &&
+                      deployedCount >= req.user.limits.deployedBridges) {
+                    return res.status(403).json({
+                      result: 'error',
+                      message: 'Deployed bridges limit reached'
+                    });
+                  }
+                  if (has(req.user?.limits, 'connectors') &&
+                      req.user?.limits?.connectors != null &&
+                      !req.user?.limits?.connectors.includes(req.body.connector || currentBridge?.connector)) {
+                    return res.status(403).json({
+                      result: 'error',
+                      message: `You are not allowed to deploy bridges of the connector: ${req.body.connector || currentBridge?.connector}`,
+                    });
+                  }
+                  if (has(req.user?.limits, 'bridgeExpires') &&
+                      req.user?.limits?.bridgeExpires != null &&
+                      (req.body.options?.expire || currentBridge?.options?.expire) != null &&
+                      !req.user?.limits?.bridgeExpires.includes(req.body.options?.expire || currentBridge?.options?.expire)) {
+                    return res.status(403).json({
+                      result: 'error',
+                      message: `You are not allowed to deploy bridges with expire: ${req.body.options?.expire || currentBridge?.options?.expire}`,
+                    });
+                  }
+                }
+              }
+            }
+
+          } catch (err) {
+            next(err);
+          }
+
           next()
         });
       }
