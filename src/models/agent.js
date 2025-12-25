@@ -23,6 +23,7 @@ export default mongoose.model(
       name: { type: String, required: true }, // unique name
       description: String,
       joinRooms: [ String ], // XMPP rooms to join,
+      expire: String,
 
       chat: {
         systemMessage: String, // SystemMessage(SYSTEM_MESSAGE) to pass to LLM on LangChain
