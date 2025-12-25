@@ -188,6 +188,8 @@ const BridgeSchema = new mongoose.Schema({
     recipientNickname: String,
     joinRooms: [ String ], // XMPP rooms to join,
 
+    expire: { type: String, enum: ['', '1m', '1h', '12h', '1d', '1w', '1mo'], default: '' },
+
     messengers: MessengersSchema,
     phone: PhoneSchema,
     scheduler: SchedulerSchema,

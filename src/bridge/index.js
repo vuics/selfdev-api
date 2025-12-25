@@ -9,6 +9,7 @@ import User from '../models/user.js'
 import Bridge from '../models/bridge.js'
 import { redisClient, connectToRedis } from '../redis.js'
 import { replaceVaultValues } from '../vault.js'
+import { offsetTime } from '../utils/datetime.js'
 
 import Messengers from './messengers.js'
 import Phone from './phone.js'
@@ -43,6 +44,20 @@ function isValid({ bridge }) {
     bridge.connector in connectorClasses &&
     (conf.bridge.filterConnectors.length === 0 || conf.bridge.filterConnectors.includes(bridge.connector))
   );
+}
+
+async function undeployExpired({ bridge }) {
+  const now = new Date();
+  if (bridge.deployed && bridge.options.expire) {
+    const undeployAt = offsetTime(bridge.updatedAt, bridge.options.expire);
+    if (undeployAt && now >= undeployAt) {
+      log(`Undeploying expired bridge ${bridge._id}:${bridge.options.name} after ${bridge.options.expire} of deployment`);
+      bridge.deployed = false;
+      await Bridge.findByIdAndUpdate(bridge._id, { deployed: bridge.deployed });
+      return true;
+    }
+  }
+  return false;
 }
 
 // ----------------- Distributed Lock -----------------
@@ -195,7 +210,10 @@ async function syncBridges() {
     for (const bridge of bridges) {
       // verbose('bridge:', bridge, ', isValid:', isValid({ bridge }))
       if (isValid({ bridge })) {
-        shouldRun[bridge._id] = bridge;
+        const expired = await undeployExpired({ bridge })
+        if (!expired) {
+          shouldRun[bridge._id] = bridge;
+        }
 
         if (!(bridge._id in runningConnectorBridges)) {
           verbose('start bridge')
