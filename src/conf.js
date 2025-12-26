@@ -224,7 +224,6 @@ const conf = {
         deployedAgents: 1,
         archetypes: ['chat-v1.0'],
         agentExpires: ['1m', '1h'],
-
         chatProviders: ['openai', 'ollama'],
         ragProviders: [ ],
         ragEmbeddingsProviders: [ ],
@@ -232,20 +231,19 @@ const conf = {
         ttsProviders: [],
         imagegenProviders: [],
         avatarProviders: [],
-
-        deployedBridges: 1,
-        connectors: ['scheduler', 'webhook'],
-        bridgeExpires: ['1m', '1h'],
-
-        // TODO: add files limits
-        //
-        // files: 0,
-        // filesSize: '0',
-        // storages: 0,
-
+        deployedBridges: 0,
+        connectors: [],
+        bridgeExpires: [],
         audioRecordings: false,
         fileAttachments: false,
         synthetic: false,
+
+        // TODO:
+        // files: 0,
+        // filesSize: '0',
+        // storages: 0,
+        // logs: false,
+        // metrics: false,
       },
     },
     basic1: {
@@ -286,27 +284,26 @@ const conf = {
         deployedAgents: 3,
         archetypes: [ 'chat-v1.0', 'rag-v1.0', 'storage-v1.0', ],
         agentExpires: ['1m', '1h', '12h', '1d', '1w'],
-        chatProviders: [ 'openai', 'ollama' ],
-        ragProviders: [ 'openai', 'ollama' ],
-        ragEmbeddingsProviders: [ 'openai', 'ollama' ],
+        chatProviders: [ 'openai', 'google_genai', 'ollama' ],
+        ragProviders: [ 'openai', 'google_genai', 'ollama' ],
+        ragEmbeddingsProviders: [ 'openai', 'google_genai', 'ollama' ],
         sttProviders: [],
         ttsProviders: [],
         imagegenProviders: [],
         avatarProviders: [],
-
-        deployedBridges: 2,
-        connectors: ['scheduler', 'webhook', ],
+        deployedBridges: 1,
+        connectors: ['scheduler'],
         bridgeExpires: ['1h', '12h', '1d', '1w'],
-
-        // TODO: add files limits
-        //
-        // files: 0,
-        // filesSize: '100Mi',
-        // storages: 0,
-
         audioRecordings: false,
         fileAttachments: false,
         synthetic: false,
+
+        // TODO:
+        // files: 0,
+        // filesSize: '100Mi',
+        // storages: 0,
+        // logs: true,
+        // metrics: true,
       },
     },
     premium1: {
@@ -349,28 +346,27 @@ const conf = {
           'chat-v1.0', 'rag-v1.0', 'storage-v1.0',
           'stt-v1.0', 'tts-v1.0', 'imagegen-v1.0',
         ],
-        agentExpires: [],  // '1m', '1h', '12h', '1d', '1w', '1mo', ''
-        chatProviders: [ 'openai', 'google_genai', 'ollama' ],
-        ragProviders: [ 'openai', 'google_genai', 'ollama' ],
-        ragEmbeddingsProviders: [ 'openai', 'google_genai', 'ollama' ],
+        agentExpires: ['1m', '1h', '12h', '1d', '1w', '1mo'],  // '1m', '1h', '12h', '1d', '1w', '1mo', ''
+        chatProviders: [ 'openai', 'google_genai', 'anthropic', , 'ollama' ],
+        ragProviders: [ 'openai', 'google_genai', 'anthropic', 'ollama' ],
+        ragEmbeddingsProviders: [ 'openai', 'google_genai', 'anthropic', 'ollama' ],
         sttProviders: [ 'speaches' ],
         ttsProviders: [ 'speaches' ],
         imagegenProviders: [ 'openai' ],
         avatarProviders: [ ],
-
         deployedBridges: 3,
-        connectors: [],  // 'messengers', 'phone', 'scheduler', 'webhook', 'email', 'mcp', 'webapp', 'a2a', 'client'
-        bridgeExpires: [],  // '1m', '1h', '12h', '1d', '1w', '1mo', ''
-
-        // TODO: add files limits
-        //
-        // files: 50,
-        // filesSize: '300Mi',
-        // storages: 0,
-
+        connectors: ['messengers', 'scheduler', 'webhook', 'email', 'mcp', 'a2a'],
+        bridgeExpires: ['1m', '1h', '12h', '1d', '1w', '1mo'],
         audioRecordings: true,
         fileAttachments: true,
         synthetic: false,
+
+        // TODO:
+        // files: 50,
+        // filesSize: '300Mi',
+        // storages: 0,
+        // logs: true,
+        // metrics: true,
       },
     },
     enterprise: {
@@ -379,6 +375,7 @@ const conf = {
         maps: null,
         deployedAgents: null,
         archetypes: null,
+        agentExpires: null,
         chatProviders: null,
         ragProviders: null,
         ragEmbeddingsProviders: null,
@@ -386,9 +383,19 @@ const conf = {
         ttsProviders: null,
         imagegenProviders: null,
         avatarProviders: null,
+        deployedBridges: null,
+        connectors: null,
+        bridgeExpires: null,
         audioRecordings: true,
         fileAttachments: true,
         synthetic: true,
+
+        // TODO:
+        // files: null,
+        // filesSize: null,
+        // storages: null,
+        // logs: true,
+        // metrics: true,
       },
     },
 
