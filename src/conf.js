@@ -645,6 +645,8 @@ export const revealConf = () => {
 
   delete publicConf.xmpp.password
 
+  delete publicConf.firefly.password
+
   delete publicConf.freeswitch.password
   delete publicConf.freeswitch.sshUsername
   delete publicConf.freeswitch.sshPassword
