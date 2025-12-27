@@ -70,34 +70,37 @@ const schema = mongoose.Schema({
   },
 
   limits: {
-    // backend limits
-    apiAccess: Boolean,
-    maps: Number,
-    deployedAgents: Number,
-    archetypes: [String],
-    agentExpires: [String],
-    //
-    chatProviders: [String],
-    ragProviders: [String],
-    ragEmbeddingsProviders: [String],
-    sttProviders: [String],
-    ttsProviders: [String],
-    imagegenProviders: [String],
-    avatarProviders: [String],
+    type: {
+      // backend limits
+      apiAccess: Boolean,
+      maps: Number,
+      deployedAgents: Number,
+      archetypes: { type: [String], default: undefined },
+      agentExpires: { type: [String], default: undefined },
+      //
+      chatProviders: { type: [String], default: undefined },
+      ragProviders: { type: [String], default: undefined },
+      ragEmbeddingsProviders: { type: [String], default: undefined },
+      sttProviders: { type: [String], default: undefined },
+      ttsProviders: { type: [String], default: undefined },
+      imagegenProviders: { type: [String], default: undefined },
+      avatarProviders: { type: [String], default: undefined },
 
-    deployedBridges: Number,
-    connectors: [String],  // 'messengers', 'phone', 'scheduler', 'webhook', 'email', 'mcp', 'webapp', 'a2a', 'client'
-    bridgeExpires: [String],  // '1m', '1h', '12h', '1d', '1w', '1mo', ''
+      deployedBridges: Number,
+      connectors: { type: [String], default: undefined }, // 'messengers', 'phone', 'scheduler', 'webhook', 'email', 'mcp', 'webapp', 'a2a', 'client'
+      bridgeExpires: { type: [String], default: undefined }, // '1m', '1h', '12h', '1d', '1w', '1mo', ''
 
-    // TODO: add
-    // files: Number,
-    // filesSize: String,
-    // storages: Number,
+      // TODO: add
+      // files: Number,
+      // filesSize: String,
+      // storages: Number,
 
-    // front-end limits
-    audioRecordings: Boolean,
-    fileAttachments: Boolean,
-    synthetic: Boolean,
+      // front-end limits
+      audioRecordings: Boolean,
+      fileAttachments: Boolean,
+      synthetic: Boolean,
+    },
+    default: undefined,
   },
 
   rememberMe: {
