@@ -289,6 +289,16 @@ export default mongoose.model(
         },
       },
 
+      hermes: {
+        model: {
+          provider: String,
+          name: String,
+          apiKey: {
+            valueFromVault: String,
+          },
+        },
+      },
+
     },
   })
     .plugin(mongooseTimestamp)
