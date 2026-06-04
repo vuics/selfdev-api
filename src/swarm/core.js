@@ -100,7 +100,7 @@ export function createSwarm({ archetypeClasses, service = 'swarm' }) {
     }
 
     const lockCleared = await checkAndClearStaleLock(agentId);
-    verbose('stale lockCleared')
+    verbose('stale lockCleared:', lockCleared)
     if (!lockCleared) return false;
 
     verbose('attempt to acquire lock')
@@ -203,6 +203,7 @@ export function createSwarm({ archetypeClasses, service = 'swarm' }) {
       log(`Retrieved ${agents.length} agent configurations`);
 
       const shouldRun = {};
+      let capacityReached = false
 
       g_agents_processed.set({ service }, agents?.length || 0);
       // verbose('agents.length:', agents?.length || 0)
@@ -217,8 +218,25 @@ export function createSwarm({ archetypeClasses, service = 'swarm' }) {
           }
 
           if (!(agent._id in runningXmppAgents)) {
-            verbose('start agent')
-            await startAgent({ agent });
+
+            log(
+              `Agents capacity: (${Object.keys(runningXmppAgents).length}/${conf.swarm.maxAgentsRun}), ` +
+              `current agent ${agent._id}:${agent.options.name}`
+            );
+
+            if (!capacityReached) {
+              capacityReached = (conf.swarm.maxAgentsRun > 0 && Object.keys(runningXmppAgents).length >= conf.swarm.maxAgentsRun);
+              log('capacityReached:', capacityReached);
+              if (capacityReached) {
+                log(
+                  `Agent limit reached (${Object.keys(runningXmppAgents).length}/${conf.swarm.maxAgentsRun}), ` +
+                  `skipping agent ${agent._id}:${agent.options.name}`
+                );
+              } else {
+                verbose('start agent')
+                await startAgent({ agent });
+              }
+            }
           } else {
             verbose('agent.updatedAt:', agent.updatedAt)
             // verbose('runningXmppAgent:', runningXmppAgents[agent._id])

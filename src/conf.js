@@ -535,6 +535,8 @@ const conf = {
     monitorSeconds: num(process.env.SWARM_MONITOR_SECONDS || 60),
     lockTimeoutSeconds: num(process.env.SWARM_LOCK_TIMEOUT_SECONDS || 120),
     lockRefreshSeconds: num(process.env.SWARM_LOCK_REFRESH_SECONDS || 30),
+
+    maxAgentsRun: num(process.env.MAX_AGENTS_RUN || 0),
   },
 
   bridge: {
