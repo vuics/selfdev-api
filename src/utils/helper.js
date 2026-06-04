@@ -1,5 +1,9 @@
 import jp from 'jsonpath';
 import _ from 'lodash'
+import { spawn } from 'node:child_process';
+import { execFile as execFileCb } from 'node:child_process';
+import { promisify } from 'node:util';
+
 import { log, warn, error, Verbose } from '../services.js'
 
 const verbose = Verbose('sd:utils/helper'); verbose('')
@@ -155,4 +159,64 @@ export function joinUrl(base, path) {
   // Remove leading slash from path
   const relative = path.replace(/^\//, '');
   return new URL(relative, normalized).toString();
+}
+
+export const execFile = promisify(execFileCb);
+
+export async function run(cmd, args, options = {}) {
+  await log(`Running: ${cmd} ${args.join(' ')}`);
+
+  try {
+    const { stdout, stderr } = await execFile(cmd, args, {
+      encoding: 'utf8',
+      maxBuffer: 50 * 1024 * 1024,
+      ...options,
+    });
+
+    if (stdout?.trim()) {
+      await log(`[${cmd} stdout] ${stdout}`);
+    }
+
+    if (stderr?.trim()) {
+      await log(`[${cmd} stderr] ${stderr}`);
+    }
+
+    return { stdout, stderr };
+  } catch (err) {
+    if (err.stdout?.trim()) {
+      await log(`[${cmd} stdout] ${err.stdout}`);
+    }
+
+    if (err.stderr?.trim()) {
+      await log(`[${cmd} stderr] ${err.stderr}`);
+    }
+
+    await log(`Command failed: ${err.message}`);
+    throw err;
+  }
+}
+
+export function spawnLogged(cmd, args, options = {}) {
+  const child = spawn(cmd, args, {
+    ...options,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+
+  child.stdout.on('data', (data) => {
+    log(`[${cmd} stdout] ${data.toString()}`);
+  });
+
+  child.stderr.on('data', (data) => {
+    log(`[${cmd} stderr] ${data.toString()}`);
+  });
+
+  child.on('exit', (code, signal) => {
+    log(`[${cmd}] exited code=${code} signal=${signal}`);
+  });
+
+  child.on('error', (err) => {
+    log(`[${cmd}] error: ${err.stack || err.message}`);
+  });
+
+  return child;
 }

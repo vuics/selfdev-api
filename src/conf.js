@@ -612,6 +612,10 @@ const conf = {
     pushIntervalSec: num(process.env.PROMETHEUS_PUSH_INTERVAL_SEC || 30),
   },
 
+  ollama: {
+    baseUrl: process.env.OLLAMA_BASE_URL || 'http://ollama:11436',
+  },
+
   files: {
     port: num(process.env.FILES_PORT || 6371),
     secure: bool(process.env.FILES_SECURE || false),

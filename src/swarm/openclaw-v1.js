@@ -1,6 +1,3 @@
-import axios from 'axios'
-// import stringify from 'json-stringify-pretty-compact';
-
 import OpenAI from 'openai';
 
 // TODO: Implement using OpenClaw App SDK:
@@ -15,8 +12,11 @@ import OpenAI from 'openai';
 import { log, warn, error, Verbose } from '../services.js'
 import XmppAgent from '../swarm/xmpp-agent.js'
 import conf from '../conf.js'
+import { sleep, run, spawnLogged } from '../utils/helper.js'
 
 const verbose = Verbose('sd:swarm/openclaw-v1'); verbose('')
+
+const OPENCLAW_GATEWAY_TOKEN='SelfDev-GW-Token'
 
 
 export default class Openclaw extends XmppAgent {
@@ -25,16 +25,90 @@ export default class Openclaw extends XmppAgent {
     // const { agent } = args
     verbose('OpenclawV1 constructed');
 
+    this.gateway = null
     this.client = null
   }
 
   async start() {
     super.start();
 
+    process.chdir('/app');
+
+    await run('node', ['/app/openclaw.mjs', 'setup']);
+
+    await run('node', [
+      '/app/openclaw.mjs',
+      'config',
+      'set',
+      'gateway.http.endpoints.chatCompletions.enabled',
+      'true',
+    ]);
+
+    this.gateway = spawnLogged(
+      'node',
+      ['/app/openclaw.mjs', 'gateway', '--token', OPENCLAW_GATEWAY_TOKEN],
+      { cwd: '/app' }
+    );
+
+    await sleep(3000)
+
+    const { openclaw } = this.agent.options;
+
+    if (openclaw.model.provider == 'ollama') {
+      await run('node', [
+        '/app/openclaw.mjs',
+        'onboard',
+        '--non-interactive',
+        '--auth-choice', 'ollama',
+        '--gateway-auth', 'token',
+        '--gateway-token', OPENCLAW_GATEWAY_TOKEN,
+        '--custom-base-url', conf.ollama.baseUrl,
+        '--custom-model-id', openclaw.model.name,
+        '--accept-risk',
+      ]);
+    } else if (openclaw.model.provider == 'openai') {
+      await run('node', [
+        '/app/openclaw.mjs',
+        'onboard',
+        '--non-interactive',
+        '--auth-choice', 'openai-api-key',
+        '--openai-api-key', openclaw.model.apiKey,
+        '--gateway-auth', 'token',
+        '--gateway-token', OPENCLAW_GATEWAY_TOKEN,
+        '--custom-model-id', openclaw.model.name,
+        '--accept-risk',
+      ]);
+    } else if (openclaw.model.provider == 'anthropic') {
+      await run('node', [
+        '/app/openclaw.mjs',
+        'onboard',
+        '--non-interactive',
+        '--anthropic-api-key', openclaw.model.apiKey,
+        '--gateway-auth', 'token',
+        '--gateway-token', OPENCLAW_GATEWAY_TOKEN,
+        '--custom-model-id', openclaw.model.name,
+        '--accept-risk',
+      ]);
+    } else { // custom
+      await run('node', [
+        '/app/openclaw.mjs',
+        'onboard',
+        '--non-interactive',
+        '--auth-choice', 'custom-api-key',
+        '--custom-api-key', openclaw.model.apiKey,
+        '--gateway-auth', 'token',
+        '--gateway-token', OPENCLAW_GATEWAY_TOKEN,
+        '--custom-base-url', `${conf.ollama.baseUrl}/v1`,
+        '--custom-model-id', openclaw.model.name,
+        '--secret-input-mode', 'plaintext',
+        '--custom-compatibility', 'openai',
+        '--custom-image-input',
+        '--accept-risk',
+      ]);
+    }
+
     this.client = new OpenAI({
-      // apiKey: process.env['OPENAI_API_KEY'], // This is the default and can be omitted
-      apiKey: '123', // FIXME: use secure key
-      // "http://127.0.0.1:18789/v1/chat/completions"
+      apiKey: OPENCLAW_GATEWAY_TOKEN,
       baseURL: 'http://127.0.0.1:18789/v1',
     });
 
@@ -44,6 +118,8 @@ export default class Openclaw extends XmppAgent {
 
   async stop() {
     super.stop();
+
+    this.gateway.kill('SIGTERM');
     verbose('OpenclawV1 stopped');
     this.slog('debug', 'Agent stopped')
   }
@@ -56,8 +132,6 @@ export default class Openclaw extends XmppAgent {
 
       verbose('XMPP chat received:', prompt);
       const completion = await this.client.chat.completions.create({
-        // model: 'gpt-5.5',  // FIXME
-        // model: 'main', // Maps to your target OpenClaw agent ID
         messages: [
           { role: 'user', content: prompt },
         ],
