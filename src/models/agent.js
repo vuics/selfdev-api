@@ -319,6 +319,16 @@ export default mongoose.model(
         },
       },
 
+      claudecode: {
+        model: {
+          provider: String,
+          name: String,
+          apiKey: {
+            valueFromVault: String,
+          },
+        },
+      },
+
     },
   })
     .plugin(mongooseTimestamp)
