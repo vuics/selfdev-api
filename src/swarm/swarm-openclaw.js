@@ -1,4 +1,4 @@
-import CodexV1 from './codex-v1.js';
+import OpenclawV1 from './openclaw-v1.js';
 
 import { createSwarm } from './core.js';
 import { log } from '../services.js';
@@ -7,9 +7,9 @@ import conf from '../conf.js';
 
 const swarm = createSwarm({
   archetypeClasses: {
-    "codex-v1.0": CodexV1,
+    "openclaw-v1.0": OpenclawV1,
   },
-  service: 'serafinianus'
+  service: 'swarm-openclaw'
 });
 
 (async () => {
@@ -17,6 +17,6 @@ const swarm = createSwarm({
   log(`Sleeping for ${sleepTime.toFixed(3)} seconds`);
   await sleep(sleepTime * 1000);
 
-  log(`Starting serafinianus container: ${conf.container.id}`);
+  log(`Starting swarm-openclaw container: ${conf.container.id}`);
   swarm.monitorAgents();
 })();
