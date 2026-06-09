@@ -13,10 +13,31 @@ export default class ClaudeCodeV1 extends XmppAgent {
     super(args);
     // const { agent } = args
     verbose('ClaudeCodeV1 constructed');
+    this.env = {
+      ...process.env,
+    }
   }
 
   async start() {
     super.start();
+    const { claudecode } = this.agent.options;
+
+    if (claudecode.model.provider == 'ollama') {
+      this.env = {
+        ...process.env,
+        ANTHROPIC_API_KEY: claudecode.model.apiKey,
+        ANTHROPIC_BASE_URL: conf.ollama.baseUrl,
+        ANTHROPIC_MODEL: claudecode.model.name,
+      }
+    } else if (claudecode.model.provider == 'anthropic') {
+      this.env = {
+        ...process.env,
+        ANTHROPIC_API_KEY: claudecode.model.apiKey,
+        ANTHROPIC_MODEL: claudecode.model.name,
+      }
+    } else {
+      throw new Error(`Unknown model provider: ${claudecode.model.provider}`)
+    }
 
     verbose('ClaudeCodeV1 started');
     this.slog('debug', 'Agent started')
@@ -40,10 +61,11 @@ export default class ClaudeCodeV1 extends XmppAgent {
       // Agentic loop: streams messages as Claude works
       for await (const message of query({
         prompt,
-        // options: {
+        options: {
+          env: this.env,
         //   allowedTools: ["Read", "Edit", "Glob"], // Auto-approve these tools
         //   permissionMode: "acceptEdits" // Auto-approve file edits
-        // }
+        }
       })) {
         verbose('claudecode message:', message)
         // Print human-readable output
